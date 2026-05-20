@@ -7,6 +7,7 @@ pandas
 scipy
 numba>=0.63.0b1
 xarray>=2026.01.0
+sqlalchemy
 # Spatial data processing stack
 cartopy
 geopandas

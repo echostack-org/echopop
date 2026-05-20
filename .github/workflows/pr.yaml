@@ -18,6 +18,7 @@ jobs:
         python-version: ["3.12", "3.13"]
         os: [ubuntu-latest, windows-latest, macos-latest]
       fail-fast: false
+
     steps:
     - name: Check out repository code
       uses: actions/checkout@v6
@@ -25,6 +26,16 @@ jobs:
       uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
+    - name: Setup PostgreSQL Binaries
+      # GitHub action to set up postgreSQL for all 3 platforms
+      uses: ikalnytskyi/action-setup-postgres@v8
+      with:
+        username: test_user
+        password: postgres
+        database: test
+        port: 5432
+        postgres-version: '14'
+      id: postgres
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
