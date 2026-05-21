@@ -63,7 +63,27 @@ dependencies = [
     "holoviews",
     "hvplot",
     "ipywidgets"
+]
 
+[project.optional-dependencies]
+dev = [
+    "black",
+    "coverage",
+    "isort",
+    "pre-commit",
+    "pytest",
+    "ruff",
+]
+
+docs = [
+    "docutils>=0.18,<0.22",
+    "jupyter-book==1.0.4.post1",
+    "numpydoc",
+    "setuptools",
+    "sphinx-automodapi",
+    "sphinxcontrib-bibtex",
+    "sphinx-tippy",
+    "sphinx-togglebutton",
 ]
 
 [project.urls]
@@ -90,7 +110,7 @@ extend-exclude = [
 ]
 
 [tool.ruff.lint]
-# E/F = Flake8 basics, I = Isort, D = Docstrings (pydocstyle)
+# E/F = pycodestyle/pyflakes basics, I = import sorting, D = docstrings
 select = ["E", "F", "I", "D", "UP", "B"]
 ignore = [
     "D100", # Missing docstring in public module
