@@ -67,7 +67,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/OSOceanAcoustics/echopop"
+Homepage = "https://github.com/echostack-org/echopop"
 
 [tool.setuptools.packages.find]
 where = ["."]
