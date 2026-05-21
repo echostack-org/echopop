@@ -31,13 +31,13 @@ We recommend using the ``libmamba`` solver instead of the classic solver.
 ```
 
 ## Latest source
-[![GitHub release](https://img.shields.io/github/v/release/OSOceanAcoustics/echopop)](https://github.com/OSOceanAcoustics/echopop/releases)
+[![GitHub release](https://img.shields.io/github/v/release/echostack-org/echopop)](https://github.com/echostack-org/echopop/releases)
 
 If you need the latest development version or want to contribute, clone the repository and install from source:
 
 ```shell
 # Clone the repository
-git clone https:://github.com/OSOceanAcoustics/echopop.git
+git clone https:://github.com/echostack-org/echopop.git
 cd echopop
 
 # Create a conda environment using the supplied requirements files
