@@ -105,7 +105,7 @@ write_to_template = 'version = "{version}"  # noqa'
 line-length = 100
 target-version = "py312"
 extend-exclude = [
-   "echopop/workflow_examples"
+   "echopop/workflow_examples",
     "*.ipynb"
 ]
 
