@@ -10,7 +10,7 @@ Ensure you have Python 3.12 or 3.13 installed, as Python 3.14 has known dependen
 
 [![PyPI version](https://img.shields.io/pypi/v/echopop)](https://pypi.org/project/echopop/)
 
-Install Echopop directly from PyPi:
+Install Echopop directly from PyPI:
 
 ```shell
 pip install echopop
@@ -31,19 +31,17 @@ We recommend using the ``libmamba`` solver instead of the classic solver.
 ```
 
 ## Latest source
-[![GitHub release](https://img.shields.io/github/v/release/OSOceanAcoustics/echopop)](https://github.com/OSOceanAcoustics/echopop/releases)
+[![GitHub release](https://img.shields.io/github/v/release/echostack-org/echopop)](https://github.com/echostack-org/echopop/releases)
 
 If you need the latest development version or want to contribute, clone the repository and install from source:
 
 ```shell
 # Clone the repository
-git clone https:://github.com/OSOceanAcoustics/echopop.git
+git clone https://github.com/echostack-org/echopop.git
 cd echopop
 
-# Create a conda environment using the supplied requirements files
-conda create -c conda-forge -n echopop --yes python=3.12 --file requirements.txt
-
-# Switch to the newly built environment
+# Create and activate a conda environment
+conda create -c conda-forge -n echopop --yes python=3.12
 conda activate echopop
 
 # Optional: Install ipykernel for JupyterLab support
@@ -53,11 +51,12 @@ conda install -c conda-forge ipykernel
 pip install -e .
 ```
 
-For a full development environment that includes docs building and testing, use:
+For a full development environment that includes testing and documentation tools, use:
 
 ```shell
-conda create -c conda-forge -n echopop --yes python=3.12 --file requirements.txt --file requirements-dev.txt --file docs/requirements.txt
-pip install -e .
+conda create -c conda-forge -n echopop-dev --yes python=3.12
+conda activate echopop-dev
+pip install -e ".[dev,docs]"
 ```
 
 :::{admonition} Development mode
