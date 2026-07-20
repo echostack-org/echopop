@@ -29,7 +29,7 @@ jobs:
         fetch-tags: true
 
     - name: Set up Python
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v7
       with:
         python-version: "3.12"
 
@@ -69,7 +69,7 @@ jobs:
         run: sleep 60  # TestPyPI takes a minute to update its index
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
