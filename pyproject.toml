@@ -58,10 +58,10 @@ dependencies = [
     "matplotlib",
     "seaborn",
     # Interactive visualization stack
-    "bokeh",
-    "geoviews",
-    "holoviews",
-    "hvplot",
+    "bokeh<3.10",
+    "geoviews>=1.15.1",
+    "holoviews>=1.23.2",
+    "hvplot>=0.12.2",
     "ipywidgets"
 
 ]
