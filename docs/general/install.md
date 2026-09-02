@@ -29,6 +29,30 @@ Install Echopop from conda-forge with either Anaconda or Miniconda:
 ```shell
 conda install -c conda-forge echopop
 ```
+
+### Python 3.14
+
+Python 3.14 installations must currently use conda-forge because Cartopy does not yet publish
+Python 3.14 wheels on PyPI. Create a dedicated environment with:
+
+```shell
+conda create -n echopop-py314 -c conda-forge python=3.14 echopop
+conda activate echopop-py314
+```
+
+The command above requires a released conda-forge Echopop package that supports Python 3.14. To
+install the latest source before that package is available, clone the repository and run:
+
+```shell
+conda create -n echopop-py314 -c conda-forge python=3.14 --file requirements.txt
+conda activate echopop-py314
+python -m pip install --no-deps -e .
+```
+
+The ``--no-deps`` option keeps pip from replacing or rebuilding the dependencies that conda-forge
+already installed. Python 3.12 and 3.13 users can continue to use the pip installation described
+above.
+
 ```{attention}
 We recommend using the ``libmamba`` solver instead of the classic solver.
    See instructions [here](https://conda.github.io/conda-libmamba-solver/getting-started/)
