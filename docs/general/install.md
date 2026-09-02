@@ -44,13 +44,14 @@ The command above requires a released conda-forge Echopop package that supports 
 install the latest source before that package is available, clone the repository and run:
 
 ```shell
-conda create -n echopop-py314 -c conda-forge python=3.14 --file requirements.txt
+conda create -n echopop-py314 -c conda-forge python=3.14 cartopy geopandas
 conda activate echopop-py314
-python -m pip install --no-deps -e .
+python -m pip install -e .
 ```
 
-The ``--no-deps`` option keeps pip from replacing or rebuilding the dependencies that conda-forge
-already installed. Python 3.12 and 3.13 users can continue to use the pip installation described
+Installing Cartopy and GeoPandas first ensures that their compiled dependencies come from
+conda-forge. The editable pip installation then installs the remaining dependencies declared in
+``pyproject.toml``. Python 3.12 and 3.13 users can continue to use the pip installation described
 above.
 
 ```{attention}

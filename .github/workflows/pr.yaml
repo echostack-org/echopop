@@ -55,8 +55,8 @@ jobs:
         python-version: "3.14"
     - name: Install dependencies
       run: |
-        conda install --yes --file requirements.txt pytest
-        python -m pip install --no-deps -e .
+        conda install --yes cartopy geopandas
+        python -m pip install -e ".[dev]"
     - name: Test with pytest
       run: |
         pytest
