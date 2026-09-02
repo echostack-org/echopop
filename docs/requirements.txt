@@ -1,8 +1,0 @@
-docutils>=0.18,<0.22
-jupyter-book==1.0.4.post1
-numpydoc
-setuptools
-sphinx-automodapi
-sphinxcontrib-bibtex
-sphinx-tippy
-sphinx-togglebutton

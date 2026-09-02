@@ -2,8 +2,8 @@
   <a href="https://doi.org/10.5281/zenodo.11454148">
     <img src="https://zenodo.org/badge/DOI/10.5281/zenodo.11454148.svg" alt="DOI">
   </a>
-  <a href="https://raw.githubusercontent.com/OSOceanAcoustics/echopop/master/LICENSE">
-    <img alt="GitHub License" src="https://img.shields.io/github/license/OSOceanAcoustics/echopop">
+  <a href="https://raw.githubusercontent.com/echostack-org/echopop/master/LICENSE">
+    <img alt="GitHub License" src="https://img.shields.io/github/license/echostack-org/echopop">
   </a>
 </div>
 

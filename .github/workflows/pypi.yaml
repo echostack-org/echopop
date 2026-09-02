@@ -22,19 +22,19 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         # fetch all history so that setuptools-scm works
         fetch-depth: 0
         fetch-tags: true
 
     - name: Set up Python
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v7
       with:
         python-version: "3.12"
 
     - name: Install dependencies
-      run: python -m pip install --upgrade pip build setuptools>=64.0.0 setuptools_scm[toml]>=8.0 wheel
+      run: python -m pip install --upgrade pip build "setuptools>=64.0.0" "setuptools_scm[toml]>=8.0" wheel
 
     - name: Build distributions
       run: |
@@ -58,7 +58,7 @@ jobs:
           path: dist
 
       - name: Upload to TestPyPI
-        uses: pypa/gh-action-pypi-publish@v1.14.0
+        uses: pypa/gh-action-pypi-publish@v1.14.2
         with:
           repository-url: https://test.pypi.org/legacy/
           # Ensure you have a secret named TEST_PYPI_API_TOKEN
@@ -69,7 +69,7 @@ jobs:
         run: sleep 60  # TestPyPI takes a minute to update its index
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -92,7 +92,7 @@ jobs:
           path: dist
 
       - name: Publish to PyPI (Trusted)
-        uses: pypa/gh-action-pypi-publish@v1.14.0
+        uses: pypa/gh-action-pypi-publish@v1.14.2
         with:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}

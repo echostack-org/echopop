@@ -315,7 +315,7 @@ class InversionLengthTS(InversionBase):
             df_length_counts["sigma_bs"] = 10.0 ** (df_length_counts["TS"] / 10.0)
 
             # Aggregate by stratum
-            self.sigma_bs_strata = df_length_counts.groupby(["stratum_ks"])[
+            self.sigma_bs_strata = df_length_counts.groupby(self.model_params["stratify_by"])[
                 ["length_count", "sigma_bs"]
             ].apply(lambda x: np.average(x.sigma_bs, weights=x.length_count))
 
