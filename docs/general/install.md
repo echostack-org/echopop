@@ -36,7 +36,7 @@ Python 3.14 installations must currently use conda-forge because Cartopy does no
 Python 3.14 wheels on PyPI. Create a dedicated environment with:
 
 ```shell
-conda create -n echopop-py314 -c conda-forge python=3.14 echopop
+conda create -n echopop-py314 -c conda-forge python=3.14 python-gil echopop
 conda activate echopop-py314
 ```
 
@@ -44,15 +44,16 @@ The command above requires a released conda-forge Echopop package that supports 
 install the latest source before that package is available, clone the repository and run:
 
 ```shell
-conda create -n echopop-py314 -c conda-forge python=3.14 cartopy geopandas
+conda create -n echopop-py314 -c conda-forge python=3.14 python-gil cartopy geopandas
 conda activate echopop-py314
 python -m pip install -e .
 ```
 
-Installing Cartopy and GeoPandas first ensures that their compiled dependencies come from
-conda-forge. The editable pip installation then installs the remaining dependencies declared in
-``pyproject.toml``. Python 3.12 and 3.13 users can continue to use the pip installation described
-above.
+The ``python-gil`` package selects the standard CPython build rather than the experimental
+free-threaded build. Installing Cartopy and GeoPandas first ensures that their compiled
+dependencies come from conda-forge. The editable pip installation then installs the remaining
+dependencies declared in ``pyproject.toml``. Python 3.12 and 3.13 users can continue to use the pip
+installation described above.
 
 ```{attention}
 We recommend using the ``libmamba`` solver instead of the classic solver.
