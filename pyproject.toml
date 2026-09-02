@@ -25,9 +25,11 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering"
 ]
-requires-python = ">=3.12, <3.14"
+requires-python = ">=3.12, <3.15"
 dependencies = [
     # Data processing and wrangling stack
     "awkward",

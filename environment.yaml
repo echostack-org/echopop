@@ -2,7 +2,7 @@ name: echopop
 channels:
   - conda-forge
 dependencies:
-  - python>=3.9
+  - python>=3.12,<3.15
   - pip
   # Computational stack
   - awkward

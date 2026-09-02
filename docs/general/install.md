@@ -3,7 +3,9 @@
 Echopop is available for installation via pip, conda-forge, or by cloning the repository for development.
 
 ```{danger}
-Ensure you have Python 3.12 or 3.13 installed, as Python 3.14 has known dependency issues.
+Echopop supports Python 3.12, 3.13, and 3.14. Python 3.14 users should install with
+conda-forge because Cartopy does not yet publish Python 3.14 wheels on PyPI. Python 3.15 is not yet
+supported.
 ```
 
 ## pip
@@ -15,6 +17,9 @@ Install Echopop directly from PyPi:
 ```shell
 pip install echopop
 ```
+
+Python 3.14 users should use the conda-forge installation below until Cartopy publishes Python 3.14
+wheels on PyPI.
 
 ## conda-forge
 [![Conda version](https://img.shields.io/conda/vn/conda-forge/echopop)](https://anaconda.org/conda-forge/echopop)
