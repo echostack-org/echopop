@@ -3,7 +3,9 @@
 Echopop is available for installation via pip, conda-forge, or by cloning the repository for development.
 
 ```{danger}
-Ensure you have Python 3.12 or 3.13 installed, as Python 3.14 has known dependency issues.
+Echopop supports Python 3.12, 3.13, and 3.14. Python 3.14 users should install with
+conda-forge because Cartopy does not yet publish Python 3.14 wheels on PyPI. Python 3.15 is not yet
+supported.
 ```
 
 ## pip
@@ -16,6 +18,9 @@ Install Echopop directly from PyPI:
 pip install echopop
 ```
 
+Python 3.14 users should use the conda-forge installation below until Cartopy publishes Python 3.14
+wheels on PyPI.
+
 ## conda-forge
 [![Conda version](https://img.shields.io/conda/vn/conda-forge/echopop)](https://anaconda.org/conda-forge/echopop)
 
@@ -24,6 +29,32 @@ Install Echopop from conda-forge with either Anaconda or Miniconda:
 ```shell
 conda install -c conda-forge echopop
 ```
+
+### Python 3.14
+
+Python 3.14 installations must currently use conda-forge because Cartopy does not yet publish
+Python 3.14 wheels on PyPI. Create a dedicated environment with:
+
+```shell
+conda create -n echopop-py314 -c conda-forge python=3.14 python-gil echopop
+conda activate echopop-py314
+```
+
+The command above requires a released conda-forge Echopop package that supports Python 3.14. To
+install the latest source before that package is available, clone the repository and run:
+
+```shell
+conda create -n echopop-py314 -c conda-forge python=3.14 python-gil cartopy geopandas
+conda activate echopop-py314
+python -m pip install -e .
+```
+
+The ``python-gil`` package selects the standard CPython build rather than the experimental
+free-threaded build. Installing Cartopy and GeoPandas first ensures that their compiled
+dependencies come from conda-forge. The editable pip installation then installs the remaining
+dependencies declared in ``pyproject.toml``. Python 3.12 and 3.13 users can continue to use the pip
+installation described above.
+
 ```{attention}
 We recommend using the ``libmamba`` solver instead of the classic solver.
    See instructions [here](https://conda.github.io/conda-libmamba-solver/getting-started/)
