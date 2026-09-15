@@ -46,7 +46,7 @@ jobs:
         shell: bash -el {0}
     steps:
     - name: Check out repository code
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
     - name: Set up Python 3.14 with conda-forge dependencies
       uses: conda-incubator/setup-miniconda@v3
       with:
