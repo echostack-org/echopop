@@ -175,11 +175,14 @@ def assign_selectivity_expansion(
             lambda n: net_l50_sr[n][1] if n in net_l50_sr else np.nan
         )
 
-    # Calculate the logistic selectivity expansion weight
-    biodata["selectivity_expansion"] = 1 / np.maximum(
-        (1.0 + np.exp(_K * biodata["l50"] - biodata["length"]) / biodata["sr"]) ** -1,
-        minimum_selectivity,
-    )
+    # Compute retention probability S(L)
+    selectivity = 1.0 / (1.0 + np.exp(_K * (biodata["l50"] - biodata["length"]) / biodata["sr"]))
+
+    # Apply lower bound threshold to avoid division by zero
+    bounded_selectivity = np.maximum(selectivity, minimum_selectivity)
+
+    # Calculate expansion weight (1 / S(L))
+    biodata["selectivity_expansion"] = 1.0 / bounded_selectivity
 
     # Return the annotated DataFrame
     return biodata
