@@ -8,6 +8,7 @@ across survey years.
 
 import numpy as np
 
+
 def transect_mesh_region_2025(
     region: np.number,
 ) -> tuple[np.number, np.number, list[np.number], list[np.number]]:
@@ -92,7 +93,6 @@ def transect_mesh_region_2025(
         transect_upper_bound = [i + 0.4 for i in range(transect_start, transect_end + 1)]
 
     return transect_start, transect_end, transect_lower_bound, transect_upper_bound
-
 
 
 def transect_mesh_region_2023(
@@ -504,15 +504,15 @@ def transect_mesh_region_2015(
     # Region 2: transects parallel to longitudes north of Haida Gwaii
     elif region == 2:
         # ---- Western-most transect
-        #transect_start = 90
-        transect_start = 92 
+        # transect_start = 90
+        transect_start = 92
         # ---- Eastern-most transect
-        #transect_end = 102
-        transect_end=97
+        # transect_end = 102
+        transect_end = 97
         # ---- Southern boundary
-        #transect_lower_bound = [90.1, 92.6, 102.4]
+        # transect_lower_bound = [90.1, 92.6, 102.4]
         # ---- Northern boundary
-        #transect_upper_bound = [90.4, 92.9, 102.1]
+        # transect_upper_bound = [90.4, 92.9, 102.1]
         # ---- Southern boundary
         transect_lower_bound = [i + 0.6 for i in range(transect_start, transect_end + 1)]
         # ---- Northern boundary
@@ -520,20 +520,19 @@ def transect_mesh_region_2015(
     # Region 3: parallel transects to latitudes west of Haida Gwaii
     else:
         # ---- Southern-most transect
-        #transect_start = 75
+        # transect_start = 75
         transect_start = 98
         # ---- Northern-most transect
-        #transect_end = 102
+        # transect_end = 102
         transect_end = 116
         # ---- Western boundary
-        #transect_lower_bound = [75.1, 102.1, 104.1, 108.1, 110.1, 112.1, 114.1, 116.1]
+        # transect_lower_bound = [75.1, 102.1, 104.1, 108.1, 110.1, 112.1, 114.1, 116.1]
         # ---- Eastern boundary
-        #transect_upper_bound = [75.4, 102.4,   .4, 108.4, 110.4, 112.4, 114.4, 116.4]
+        # transect_upper_bound = [75.4, 102.4,   .4, 108.4, 110.4, 112.4, 114.4, 116.4]
         # ---- Western boundary
         transect_lower_bound = [i + 0.1 for i in range(transect_start, transect_end + 1)]
         # ---- Eastern boundary
         transect_upper_bound = [i + 0.4 for i in range(transect_start, transect_end + 1)]
-
 
     return transect_start, transect_end, transect_lower_bound, transect_upper_bound
 
@@ -628,7 +627,7 @@ def transect_mesh_region_2013(
         transect_lower_bound = [i + 0.1 for i in range(transect_start, transect_end + 1)]
         # ---- Eastern boundary
         transect_upper_bound = [i + 0.4 for i in range(transect_start, transect_end + 1)]
-           
+
     return transect_start, transect_end, transect_lower_bound, transect_upper_bound
 
 
