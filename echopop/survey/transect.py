@@ -68,3 +68,5 @@ def compute_interval_distance(
     nasc_data.loc[deviation_mask, "distance_interval"] = (
         nasc_data.loc[deviation_mask, "distance_e"] - nasc_data.loc[deviation_mask, "distance_s"]
     )
+    # Replace erroneous intervals with median distance interval
+    nasc_data.loc[deviation_mask, "distance_interval"] = median_interval

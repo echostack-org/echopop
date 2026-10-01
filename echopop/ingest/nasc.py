@@ -374,8 +374,8 @@ def read_echoview_export(filename: Path, validator: Any | None = None) -> pd.Dat
         col = next(iter(lon_columns))
         df.rename(columns={col: "longitude"}, inplace=True)
     # ---- If > 1 is present and includes 'lon_m'
-    elif len(lon_columns) > 1 and "lon_m" in lon_columns:
-        df.rename(columns={"lon_m": "longitude"}, inplace=True)
+    elif len(lon_columns) > 1 and "lon_s" in lon_columns:
+        df.rename(columns={"lon_s": "longitude"}, inplace=True)
 
     # Disambiguate possible overlapping longitude column names
     # ---- Intersecting names
@@ -385,8 +385,8 @@ def read_echoview_export(filename: Path, validator: Any | None = None) -> pd.Dat
         col = next(iter(lat_columns))
         df.rename(columns={col: "latitude"}, inplace=True)
     # ---- If > 1 is present and includes 'lon_m'
-    elif len(lat_columns) > 1 and "lat_m" in lat_columns:
-        df.rename(columns={"lat_m": "latitude"}, inplace=True)
+    elif len(lat_columns) > 1 and "lat_s" in lat_columns:
+        df.rename(columns={"lat_s": "latitude"}, inplace=True)
 
     # Rename columns used by Echopop
     df.rename(columns=ECHOVIEW_TO_ECHOPOP, inplace=True)
