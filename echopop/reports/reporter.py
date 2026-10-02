@@ -652,13 +652,14 @@ def prepare_aged_biomass_dataframes(
 
     # Column name mapping for renaming
     RENAME_MAP = {
+        "et_id": "ET_ID",
         "latitude": "Lat",
         "longitude": "Lon",
         "transect_num": "Transect",
     }
 
     # Column ordering
-    COLUMN_ORDER = ["Transect", "Lat", "Lon", "stratum"]
+    COLUMN_ORDER = ["ET_ID", "Transect", "Lat", "Lon", "stratum"]
 
     # Iterate through each table to update the formatting
     for sex in ["all", "male", "female"]:
@@ -1198,6 +1199,7 @@ class Reporter:
             Kriged mesh with one row per mesh cell and at least the stratum identifier and
             biomass-related columns. The stratum must be mapped to `weight_data` using
             `kriged_stratum_link`.
+            If present, `et_id` is retained as `ET_ID` in every sex-specific sheet.
         weight_data : pandas.DataFrame
             Multi-indexed DataFrame representing age-weight distributions. Expected to have a
             MultiIndex for columns that includes 'sex' and a single stratum level (e.g. 'stratum').
@@ -1276,7 +1278,11 @@ class Reporter:
         # Combine the overall biomass estimates with the age-specific estimates
         kriged_tables = {
             sex: pivot_aged_dataframe(
-                kriged_data, age_weight_proportions[sex], "biomass", sex, ["latitude", "longitude"]
+                kriged_data,
+                age_weight_proportions[sex],
+                "biomass",
+                sex,
+                ["et_id", "latitude", "longitude"],
             )
             for sex in ["all", "female", "male"]
         }
@@ -1313,6 +1319,7 @@ class Reporter:
         kriged_data : pandas.DataFrame
             Kriged mesh containing at minimum columns for latitude, longitude, kriged_variable,
             and `cell_cv`. The stratum column is indicated by `kriged_stratum`.
+            If present, `et_id` is retained as `ET_ID` for ArcGIS compatibility.
         kriged_stratum : str
             Column name or index name in `kriged_data` identifying stratum; used to align
             `sigma_bs_data`.
@@ -1403,6 +1410,7 @@ class Reporter:
         # Subset the columns that are required for the report
         output_df = kriged_data.filter(
             [
+                "et_id",
                 "longitude",
                 "latitude",
                 "stratum",
@@ -1422,6 +1430,7 @@ class Reporter:
         # Rename the columns to match required output
         output_df.rename(
             columns={
+                "et_id": "ET_ID",
                 "latitude": "Lat",
                 "longitude": "Lon",
                 "nasc": "NASC",
@@ -1694,6 +1703,7 @@ class Reporter:
         transect_data : pandas.DataFrame
             Transect-level DataFrame that must contain the following columns:
             ['latitude','longitude','biomass_density','nasc','number_density'].
+            If present, `et_id` is retained as `ET_ID` for ArcGIS compatibility.
 
         Returns
         -------
@@ -1730,12 +1740,13 @@ class Reporter:
 
         # Filter the columns
         transect_output = transect_data.filter(
-            ["latitude", "longitude", "biomass_density", "nasc", "number_density"]
+            ["et_id", "latitude", "longitude", "biomass_density", "nasc", "number_density"]
         )
 
         # Rename the columns
         transect_output.rename(
             columns={
+                "et_id": "ET_ID",
                 "latitude": "Lat",
                 "longitude": "Lon",
                 "biomass_density": "Biomass density",
