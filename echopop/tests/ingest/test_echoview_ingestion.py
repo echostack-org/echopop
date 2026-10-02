@@ -734,6 +734,17 @@ def test_read_echoview_export_empty_file(empty_echoview_data):
         os.unlink(temp_csv)
 
 
+def test_read_echoview_export_empty_file_without_coordinates(tmp_path):
+    """Return an empty DataFrame when an empty export has no coordinate columns."""
+    filename = tmp_path / "empty.csv"
+    pd.DataFrame(columns=["date_s", "prc_nasc"]).to_csv(filename, index=False)
+
+    result = read_echoview_export(filename)
+
+    assert result.empty
+    assert list(result.columns) == ["ping_date", "nasc"]
+
+
 def test_read_echoview_export_missing_columns(missing_columns_data):
     """Test with file missing some columns from mapping."""
     temp_csv = helpers_echoview_ingestion.create_temp_csv(missing_columns_data)

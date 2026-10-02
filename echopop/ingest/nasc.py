@@ -392,6 +392,10 @@ def read_echoview_export(
     # Rename columns used by Echopop
     df.rename(columns=ECHOVIEW_TO_ECHOPOP, inplace=True)
 
+    # Empty exports have no coordinate values to validate.
+    if df.empty:
+        return df
+
     missing_coordinates = [
         column for column in ("latitude", "longitude") if column not in df.columns
     ]

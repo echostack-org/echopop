@@ -34,9 +34,10 @@ def test_read_echoview_sv_with_transect_num(sample_sv_csv_file):
 
 
 def test_read_echoview_sv_empty_file(empty_sv_csv_file):
-    """Require coordinates even when an export contains no data rows."""
-    with pytest.raises(ValueError, match="likely alternatives are 'e' or 'm'"):
-        ingest_sv.read_echoview_sv(empty_sv_csv_file)
+    """Return None for an empty Sv export."""
+    result = ingest_sv.read_echoview_sv(empty_sv_csv_file)
+
+    assert result is None
 
 
 def test_read_echoview_sv_no_coordinate_imputation(sample_sv_csv_file):
