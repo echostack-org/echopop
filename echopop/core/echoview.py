@@ -14,8 +14,6 @@ This module contains constants and mappings for processing Echoview export data.
 # ------------
 # - 'date_s' → 'ping_date' : date of first ping in the interval/domain (YYYYMMDD format)
 # - 'exclude_below_line_depth_mean' → 'max_depth' : mean maximum depth of interval/domain
-# - 'lat_s' → 'latitude' : latitude of first ping in the interval/domains (DD.ddddd format)
-# - 'lon_s' → 'longitude' : longitude of first ping in the interval/domains (DD.ddddd format)
 # - 'prc_nasc' → 'nasc' : region-integrated NASC (m^2 nmi^-2)
 # - 'time_s' → 'ping_time' : time of first ping in the interval/domain (HH:mm:ss.SSSS format)
 # - 'vl_end' → 'distance_e' : vessel log distance of the last ping in the interval/domain (nmi)
@@ -24,10 +22,6 @@ ECHOVIEW_TO_ECHOPOP = {
     "date_s": "ping_date",
     "exclude_below_line_depth_mean": "max_depth",
     "exclude_below_depth_mean": "max_depth",
-    "lat_s": "latitude_s",
-    "lat_m": "latitude",
-    "lon_s": "longitude_s",
-    "lon_m": "longitude",
     "prc_nasc": "nasc",
     "time_s": "ping_time",
     "vl_end": "distance_e",

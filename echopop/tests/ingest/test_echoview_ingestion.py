@@ -686,6 +686,38 @@ def test_read_echoview_export_with_real_file(echoview_temp_csv):
     assert result["max_depth"].iloc[2] == 201.3
 
 
+@pytest.mark.parametrize("suffix", ["e", "m"])
+def test_read_echoview_export_with_selected_latlon_suffix(tmp_path, suffix):
+    """Map the coordinate pair selected by the caller."""
+    filename = tmp_path / "coordinates.csv"
+    pd.DataFrame({f"lat_{suffix}": [45.0], f"lon_{suffix}": [-125.0]}).to_csv(filename, index=False)
+
+    result = read_echoview_export(filename, latlon_suffix=suffix)
+
+    assert result["latitude"].iloc[0] == 45.0
+    assert result["longitude"].iloc[0] == -125.0
+
+
+def test_read_echoview_export_accepts_canonical_coordinates(tmp_path):
+    """Keep canonical coordinate columns when the selected suffixed columns are absent."""
+    filename = tmp_path / "coordinates.csv"
+    pd.DataFrame({"latitude": [45.0], "longitude": [-125.0]}).to_csv(filename, index=False)
+
+    result = read_echoview_export(filename)
+
+    assert result["latitude"].iloc[0] == 45.0
+    assert result["longitude"].iloc[0] == -125.0
+
+
+def test_read_echoview_export_errors_when_selected_suffix_is_absent(tmp_path):
+    """Explain how to select another suffix when default coordinates cannot be mapped."""
+    filename = tmp_path / "coordinates.csv"
+    pd.DataFrame({"lat_e": [45.0], "lon_e": [-125.0]}).to_csv(filename, index=False)
+
+    with pytest.raises(ValueError, match=r"latlon_suffix='s'.*alternatives are 'e' or 'm'"):
+        read_echoview_export(filename)
+
+
 def test_read_echoview_export_empty_file(empty_echoview_data):
     """Test with empty file (headers only)."""
     temp_csv = helpers_echoview_ingestion.create_temp_csv(empty_echoview_data)
@@ -698,6 +730,17 @@ def test_read_echoview_export_empty_file(empty_echoview_data):
         assert len(result) == 0
     finally:
         os.unlink(temp_csv)
+
+
+def test_read_echoview_export_empty_file_without_coordinates(tmp_path):
+    """Return an empty DataFrame when an empty export has no coordinate columns."""
+    filename = tmp_path / "empty.csv"
+    pd.DataFrame(columns=["date_s", "prc_nasc"]).to_csv(filename, index=False)
+
+    result = read_echoview_export(filename)
+
+    assert result.empty
+    assert list(result.columns) == ["ping_date", "nasc"]
 
 
 def test_read_echoview_export_missing_columns(missing_columns_data):

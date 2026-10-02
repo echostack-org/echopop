@@ -9,7 +9,8 @@ from echopop.ingest import sv as ingest_sv
 
 def test_read_echoview_sv_basic(sample_sv_csv_file):
     """Test basic reading of Echoview SV data."""
-    result = ingest_sv.read_echoview_sv(sample_sv_csv_file)
+    # sample_sv_csv_file contains Lat_M and Lon_M
+    result = ingest_sv.read_echoview_sv(sample_sv_csv_file, latlon_suffix="m")
 
     assert result is not None
     assert isinstance(result, pd.DataFrame)
@@ -22,7 +23,8 @@ def test_read_echoview_sv_basic(sample_sv_csv_file):
 
 def test_read_echoview_sv_with_transect_num(sample_sv_csv_file):
     """Test reading with transect number assignment."""
-    result = ingest_sv.read_echoview_sv(sample_sv_csv_file, transect_num=5)
+    # sample_sv_csv_file contains Lat_M and Lon_M
+    result = ingest_sv.read_echoview_sv(sample_sv_csv_file, transect_num=5, latlon_suffix="m")
 
     assert "transect_num" in result.columns
     assert all(result["transect_num"] == 5)
@@ -30,7 +32,7 @@ def test_read_echoview_sv_with_transect_num(sample_sv_csv_file):
 
 
 def test_read_echoview_sv_empty_file(empty_sv_csv_file):
-    """Test handling of empty files."""
+    """Return None for an empty Sv export."""
     result = ingest_sv.read_echoview_sv(empty_sv_csv_file)
 
     assert result is None
@@ -38,7 +40,9 @@ def test_read_echoview_sv_empty_file(empty_sv_csv_file):
 
 def test_read_echoview_sv_no_coordinate_imputation(sample_sv_csv_file):
     """Test reading without coordinate imputation."""
-    result = ingest_sv.read_echoview_sv(sample_sv_csv_file, impute_coordinates=False)
+    result = ingest_sv.read_echoview_sv(
+        sample_sv_csv_file, impute_coordinates=False, latlon_suffix="m"
+    )
 
     assert result is not None
     assert isinstance(result, pd.DataFrame)
@@ -294,6 +298,7 @@ def test_ingest_echoview_sv_basic_functionality(sv_directory_with_files):
         center_frequencies=center_frequencies,
         aggregate_method="cells",
         impute_coordinates=True,
+        latlon_suffix="m",  # files created in fixture contains Lat_M and Lon_M
     )
 
     assert isinstance(result_data, pd.DataFrame)
@@ -309,6 +314,7 @@ def test_ingest_echoview_sv_with_transect_pattern(sv_directory_with_files):
         center_frequencies=center_frequencies,
         transect_pattern=r"x(\d+)",
         aggregate_method="interval",
+        latlon_suffix="m",  # files created in fixture contains Lat_M and Lon_M
     )
 
     assert isinstance(result_data, pd.DataFrame)
@@ -318,7 +324,10 @@ def test_ingest_echoview_sv_with_transect_pattern(sv_directory_with_files):
 def test_ingest_echoview_sv_no_center_frequencies(sv_directory_with_files):
     """Test SV ingestion without specified center frequencies."""
     result_data, result_coords = ingest_sv.ingest_echoview_sv(
-        sv_directory_with_files, transect_pattern=r"x(\d+)", aggregate_method="transect"
+        sv_directory_with_files,
+        transect_pattern=r"x(\d+)",
+        aggregate_method="transect",
+        latlon_suffix="m",  # files created in fixture contains Lat_M and Lon_M
     )
 
     assert isinstance(result_data, pd.DataFrame)
