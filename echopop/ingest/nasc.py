@@ -341,9 +341,7 @@ def impute_bad_coordinates(data: pd.DataFrame, column: str) -> None:
             )
 
 
-def read_echoview_export(
-    filename: Path, latlon_suffix: str = "s"
-) -> pd.DataFrame:
+def read_echoview_export(filename: Path, latlon_suffix: str = "s") -> pd.DataFrame:
     """
     Read a generic Echoview export CSV file.
 

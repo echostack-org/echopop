@@ -24,9 +24,7 @@ def test_read_echoview_sv_basic(sample_sv_csv_file):
 def test_read_echoview_sv_with_transect_num(sample_sv_csv_file):
     """Test reading with transect number assignment."""
     # sample_sv_csv_file constains Lat_M and Lon_M
-    result = ingest_sv.read_echoview_sv(
-        sample_sv_csv_file, transect_num=5, latlon_suffix="m"
-    )
+    result = ingest_sv.read_echoview_sv(sample_sv_csv_file, transect_num=5, latlon_suffix="m")
 
     assert "transect_num" in result.columns
     assert all(result["transect_num"] == 5)
@@ -293,7 +291,7 @@ def test_integrate_measurements_no_coordinates():
 
 def test_ingest_echoview_sv_basic_functionality(sv_directory_with_files):
     """Test basic functionality of complete SV ingestion pipeline."""
-    center_frequencies = {18000: {"min": -90.0, "max": -50.0}}   
+    center_frequencies = {18000: {"min": -90.0, "max": -50.0}}
 
     result_data, result_coords = ingest_sv.ingest_echoview_sv(
         sv_directory_with_files,
