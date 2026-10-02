@@ -342,7 +342,7 @@ def impute_bad_coordinates(data: pd.DataFrame, column: str) -> None:
 
 
 def read_echoview_export(
-    filename: Path, validator: Any | None = None, latlon_suffix: str = "s"
+    filename: Path, latlon_suffix: str = "s"
 ) -> pd.DataFrame:
     """
     Read a generic Echoview export CSV file.
@@ -353,8 +353,6 @@ def read_echoview_export(
     ----------
     filename : pathlib.Path
         Full path to the NASC CSV file.
-    validator : Any
-        File-specific validator, if defined.
     latlon_suffix : str, default "s"
         Suffix identifying the Echoview latitude and longitude columns to use. For example,
         ``"s"`` selects ``lat_s`` and ``lon_s``.
@@ -527,7 +525,6 @@ def read_echoview_nasc(
     filename: Path,
     transect_num: float,
     impute_coordinates: bool = True,
-    validator: Any | None = None,
     latlon_suffix: str = "s",
 ) -> pd.DataFrame:
     """
@@ -552,7 +549,7 @@ def read_echoview_nasc(
         Cleaned and formatted DataFrame
     """
     # Read in the defined CSV file
-    nasc_df = read_echoview_export(filename, validator, latlon_suffix=latlon_suffix)
+    nasc_df = read_echoview_export(filename, latlon_suffix=latlon_suffix)
 
     # Add transect number
     nasc_df["transect_num"] = transect_num
