@@ -23,7 +23,7 @@ def test_read_echoview_sv_basic(sample_sv_csv_file):
 
 def test_read_echoview_sv_with_transect_num(sample_sv_csv_file):
     """Test reading with transect number assignment."""
-    # sample_sv_csv_file constains Lat_M and Lon_M
+    # sample_sv_csv_file contains Lat_M and Lon_M
     result = ingest_sv.read_echoview_sv(sample_sv_csv_file, transect_num=5, latlon_suffix="m")
 
     assert "transect_num" in result.columns
