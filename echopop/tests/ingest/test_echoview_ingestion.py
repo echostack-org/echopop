@@ -690,9 +690,7 @@ def test_read_echoview_export_with_real_file(echoview_temp_csv):
 def test_read_echoview_export_with_selected_latlon_suffix(tmp_path, suffix):
     """Map the coordinate pair selected by the caller."""
     filename = tmp_path / "coordinates.csv"
-    pd.DataFrame({f"lat_{suffix}": [45.0], f"lon_{suffix}": [-125.0]}).to_csv(
-        filename, index=False
-    )
+    pd.DataFrame({f"lat_{suffix}": [45.0], f"lon_{suffix}": [-125.0]}).to_csv(filename, index=False)
 
     result = read_echoview_export(filename, latlon_suffix=suffix)
 
