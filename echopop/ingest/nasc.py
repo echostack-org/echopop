@@ -341,7 +341,7 @@ def impute_bad_coordinates(data: pd.DataFrame, column: str) -> None:
             )
 
 
-def read_echoview_export(filename: Path, latlon_suffix: str = "s") -> pd.DataFrame:
+def rename_echoview_export_columns(filename: Path, latlon_suffix: str = "s") -> pd.DataFrame:
     """
     Read a generic Echoview export CSV file.
 
@@ -360,11 +360,6 @@ def read_echoview_export(filename: Path, latlon_suffix: str = "s") -> pd.DataFra
     pd.DataFrame
         Cleaned and formatted data.
 
-    Raises
-    ------
-    ValueError
-        If the selected coordinate columns cannot be mapped and the input does not already contain
-        ``latitude`` and ``longitude`` columns.
     """
     # Read the CSV file
     # df = read_csv_file(filename)
@@ -387,24 +382,6 @@ def read_echoview_export(filename: Path, latlon_suffix: str = "s") -> pd.DataFra
 
     # Rename columns used by Echopop
     df.rename(columns=ECHOVIEW_TO_ECHOPOP, inplace=True)
-
-    # Empty exports have no coordinate values to validate.
-    if df.empty:
-        return df
-
-    missing_coordinates = [
-        column for column in ("latitude", "longitude") if column not in df.columns
-    ]
-    if missing_coordinates:
-        raise ValueError(
-            f"Could not identify {', '.join(missing_coordinates)} in {filename}. "
-            f"The selected latlon_suffix={latlon_suffix!r} expects columns "
-            f"'lat_{suffix}' and 'lon_{suffix}'. If the input does not already contain "
-            "'latitude' and 'longitude', select the matching suffix; likely alternatives are "
-            "'e' or 'm'."
-        )
-
-    # TODO: Validation step would be here
 
     return df
 
@@ -539,7 +516,7 @@ def read_echoview_nasc(
     impute_coordinates : bool
         Instruct whether bad spatial coordinates should be imputed or not
     latlon_suffix : str, default "s"
-        Coordinate suffix passed to :func:`read_echoview_export`.
+        Coordinate suffix passed to :func:`rename_echoview_export_columns`.
 
     Returns
     -------
@@ -547,7 +524,7 @@ def read_echoview_nasc(
         Cleaned and formatted DataFrame
     """
     # Read in the defined CSV file
-    nasc_df = read_echoview_export(filename, latlon_suffix=latlon_suffix)
+    nasc_df = rename_echoview_export_columns(filename, latlon_suffix=latlon_suffix)
 
     # Add transect number
     nasc_df["transect_num"] = transect_num

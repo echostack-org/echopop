@@ -36,7 +36,7 @@ def read_echoview_sv(
     transect_num : float, optional
         Transect number to assign to all data in this file. If None, no transect number is added
     latlon_suffix : str, default "s"
-        Coordinate suffix passed to :func:`echopop.ingest.nasc.read_echoview_export`
+        Coordinate suffix passed to :func:`echopop.ingest.nasc.rename_echoview_export_columns`
 
     Returns
     -------
@@ -56,7 +56,7 @@ def read_echoview_sv(
     ['sv_mean', 'latitude', 'longitude', 'transect_num', 'filename', ...]
     """
     # Read in the defined CSV file
-    sv_df = nasc.read_echoview_export(filename, latlon_suffix=latlon_suffix)
+    sv_df = nasc.rename_echoview_export_columns(filename, latlon_suffix=latlon_suffix)
 
     # Don't read in if the file contents are empty
     if sv_df.empty or sv_df.dropna(axis=1, how="all").empty:

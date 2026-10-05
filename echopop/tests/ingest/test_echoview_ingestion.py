@@ -19,7 +19,7 @@ from echopop.ingest.nasc import (
     merge_echoview_nasc,
     merge_exports,
     process_region_names,
-    read_echoview_export,
+    rename_echoview_export_columns,
     read_echoview_nasc,
     read_nasc_file,
     read_transect_region_haul_key,
@@ -652,11 +652,11 @@ def test_no_bad_coords(no_bad_coords):
 
 
 # ==================================================================================================
-# TESTS FOR read_echoview_export
+# TESTS FOR rename_echoview_export_columns
 # -----------------------------
-def test_read_echoview_export_with_real_file(echoview_temp_csv):
-    """Test read_echoview_export with an actual temporary file."""
-    result = read_echoview_export(echoview_temp_csv)
+def test_rename_echoview_export_columns_with_real_file(echoview_temp_csv):
+    """Test rename_echoview_export_columns with an actual temporary file."""
+    result = rename_echoview_export_columns(echoview_temp_csv)
 
     # Check data was read correctly
     assert len(result) == 3
@@ -687,42 +687,33 @@ def test_read_echoview_export_with_real_file(echoview_temp_csv):
 
 
 @pytest.mark.parametrize("suffix", ["e", "m"])
-def test_read_echoview_export_with_selected_latlon_suffix(tmp_path, suffix):
+def test_rename_echoview_export_columns_with_selected_latlon_suffix(tmp_path, suffix):
     """Map the coordinate pair selected by the caller."""
     filename = tmp_path / "coordinates.csv"
     pd.DataFrame({f"lat_{suffix}": [45.0], f"lon_{suffix}": [-125.0]}).to_csv(filename, index=False)
 
-    result = read_echoview_export(filename, latlon_suffix=suffix)
+    result = rename_echoview_export_columns(filename, latlon_suffix=suffix)
 
     assert result["latitude"].iloc[0] == 45.0
     assert result["longitude"].iloc[0] == -125.0
 
 
-def test_read_echoview_export_accepts_canonical_coordinates(tmp_path):
+def test_rename_echoview_export_columns_accepts_canonical_coordinates(tmp_path):
     """Keep canonical coordinate columns when the selected suffixed columns are absent."""
     filename = tmp_path / "coordinates.csv"
     pd.DataFrame({"latitude": [45.0], "longitude": [-125.0]}).to_csv(filename, index=False)
 
-    result = read_echoview_export(filename)
+    result = rename_echoview_export_columns(filename)
 
     assert result["latitude"].iloc[0] == 45.0
     assert result["longitude"].iloc[0] == -125.0
 
 
-def test_read_echoview_export_errors_when_selected_suffix_is_absent(tmp_path):
-    """Explain how to select another suffix when default coordinates cannot be mapped."""
-    filename = tmp_path / "coordinates.csv"
-    pd.DataFrame({"lat_e": [45.0], "lon_e": [-125.0]}).to_csv(filename, index=False)
-
-    with pytest.raises(ValueError, match=r"latlon_suffix='s'.*alternatives are 'e' or 'm'"):
-        read_echoview_export(filename)
-
-
-def test_read_echoview_export_empty_file(empty_echoview_data):
+def test_rename_echoview_export_columns_empty_file(empty_echoview_data):
     """Test with empty file (headers only)."""
     temp_csv = helpers_echoview_ingestion.create_temp_csv(empty_echoview_data)
     try:
-        result = read_echoview_export(temp_csv)
+        result = rename_echoview_export_columns(temp_csv)
 
         # Check structure - should have renamed columns but no rows
         assert "ping_date" in result.columns
@@ -732,22 +723,22 @@ def test_read_echoview_export_empty_file(empty_echoview_data):
         os.unlink(temp_csv)
 
 
-def test_read_echoview_export_empty_file_without_coordinates(tmp_path):
+def test_rename_echoview_export_columns_empty_file_without_coordinates(tmp_path):
     """Return an empty DataFrame when an empty export has no coordinate columns."""
     filename = tmp_path / "empty.csv"
     pd.DataFrame(columns=["date_s", "prc_nasc"]).to_csv(filename, index=False)
 
-    result = read_echoview_export(filename)
+    result = rename_echoview_export_columns(filename)
 
     assert result.empty
     assert list(result.columns) == ["ping_date", "nasc"]
 
 
-def test_read_echoview_export_missing_columns(missing_columns_data):
+def test_rename_echoview_export_columns_missing_columns(missing_columns_data):
     """Test with file missing some columns from mapping."""
     temp_csv = helpers_echoview_ingestion.create_temp_csv(missing_columns_data)
     try:
-        result = read_echoview_export(temp_csv)
+        result = rename_echoview_export_columns(temp_csv)
 
         # Present columns should be renamed
         assert "ping_date" in result.columns
@@ -764,11 +755,11 @@ def test_read_echoview_export_missing_columns(missing_columns_data):
         os.unlink(temp_csv)
 
 
-def test_read_echoview_export_duplicate_columns(duplicate_columns_data):
+def test_rename_echoview_export_columns_duplicate_columns(duplicate_columns_data):
     """Test with duplicate columns (after CSV reading)."""
     temp_csv = helpers_echoview_ingestion.create_temp_csv(duplicate_columns_data)
     try:
-        result = read_echoview_export(temp_csv)
+        result = rename_echoview_export_columns(temp_csv)
 
         # Original lat_s should be renamed to latitude
         assert "latitude" in result.columns
@@ -779,11 +770,11 @@ def test_read_echoview_export_duplicate_columns(duplicate_columns_data):
         os.unlink(temp_csv)
 
 
-def test_read_echoview_export_extreme_values(extreme_values_data):
+def test_rename_echoview_export_columns_extreme_values(extreme_values_data):
     """Test with extreme values to ensure they're handled correctly."""
     temp_csv = helpers_echoview_ingestion.create_temp_csv(extreme_values_data)
     try:
-        result = read_echoview_export(temp_csv)
+        result = rename_echoview_export_columns(temp_csv)
 
         # Check extreme values are preserved
         assert np.isinf(result["max_depth"].iloc[0])
