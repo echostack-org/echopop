@@ -66,7 +66,7 @@ def test_kriged_mesh_results_identifiers(tmp_path, include_et_id, stratum_as_ind
         }
     )
     if include_et_id:
-        expected.insert(0, "ET_ID", [503, 101, 907])
+        expected["ET_ID"] = [503, 101, 907]
     pd.testing.assert_frame_equal(actual, expected, check_dtype=False)
     pd.testing.assert_frame_equal(mesh, original_mesh)
     pd.testing.assert_frame_equal(sigma_bs, original_sigma_bs)
@@ -135,7 +135,7 @@ def test_kriged_aged_biomass_mesh_identifiers(tmp_path, include_et_id, nonzero_o
         expected[1] = mesh[biomass_column] * proportions
         expected[2] = mesh[biomass_column] * (1.0 - proportions)
         if include_et_id:
-            expected.insert(0, "ET_ID", mesh["et_id"])
+            expected["ET_ID"] = mesh["et_id"]
         pd.testing.assert_frame_equal(
             sheets[sheetname], expected.reset_index(drop=True), check_dtype=False
         )
@@ -175,6 +175,6 @@ def test_kriging_input_identifiers(tmp_path, include_et_id):
         }
     )
     if include_et_id:
-        expected.insert(0, "ET_ID", [503, 101, 907])
+        expected["ET_ID"] = [503, 101, 907]
     pd.testing.assert_frame_equal(actual, expected, check_dtype=False)
     pd.testing.assert_frame_equal(transect_data, original)

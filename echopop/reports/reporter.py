@@ -659,7 +659,7 @@ def prepare_aged_biomass_dataframes(
     }
 
     # Column ordering
-    COLUMN_ORDER = ["ET_ID", "Transect", "Lat", "Lon", "stratum"]
+    COLUMN_ORDER = ["Transect", "Lat", "Lon", "stratum"]
 
     # Iterate through each table to update the formatting
     for sex in ["all", "male", "female"]:
@@ -687,6 +687,7 @@ def prepare_aged_biomass_dataframes(
             COLUMN_ORDER
             + geodata_sex.filter(regex=r"wgt+").columns.tolist()
             + geodata_sex.filter(regex=r"\d+").columns.tolist()
+            + ["ET_ID"]
         )
         # ---- Update the dictionary table
         geodata_tables[sex] = geodata_sex.filter(sex_columns)
@@ -1410,7 +1411,6 @@ class Reporter:
         # Subset the columns that are required for the report
         output_df = kriged_data.filter(
             [
-                "et_id",
                 "longitude",
                 "latitude",
                 "stratum",
@@ -1424,6 +1424,7 @@ class Reporter:
                 "sig_b",
                 "cell_cv",
                 "krig_SD",
+                "et_id",
             ]
         )
 
@@ -1740,7 +1741,7 @@ class Reporter:
 
         # Filter the columns
         transect_output = transect_data.filter(
-            ["et_id", "latitude", "longitude", "biomass_density", "nasc", "number_density"]
+            ["latitude", "longitude", "biomass_density", "nasc", "number_density", "et_id"]
         )
 
         # Rename the columns
