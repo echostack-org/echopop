@@ -26,6 +26,8 @@ ECHOVIEW_TO_ECHOPOP = {
     "time_s": "ping_time",
     "vl_end": "distance_e",
     "vl_start": "distance_s",
+    "dist_e": "distance_e",  # only seen in 2015 T40 intervals csv
+    "dist_s": "distance_s",
 }
 
 # Valid Echoview export sorting columns
