@@ -30,7 +30,7 @@ ECHOVIEW_TO_ECHOPOP = {
     "time_s": "ping_time",
     "vl_end": "distance_e",
     "vl_start": "distance_s",
-    "dist_e": "distance_e",  # GPS-based distances,seen occasionally in Echoview intervals exports
+    "dist_e": "distance_e",
     "dist_s": "distance_s",
 }
 
