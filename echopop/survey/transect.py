@@ -64,9 +64,5 @@ def compute_interval_distance(
     # Find intervals that deviate significantly from median
     deviation_mask = np.abs(nasc_data["distance_interval"] - median_interval) > interval_threshold
 
-    # Replace erroneous intervals with direct distance calculation
-    nasc_data.loc[deviation_mask, "distance_interval"] = (
-        nasc_data.loc[deviation_mask, "distance_e"] - nasc_data.loc[deviation_mask, "distance_s"]
-    )
     # Replace erroneous intervals with median distance interval
     nasc_data.loc[deviation_mask, "distance_interval"] = median_interval
