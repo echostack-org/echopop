@@ -18,7 +18,7 @@ def read_echoview_sv(
     filename: Path,
     impute_coordinates: bool = True,
     transect_num: float | None = None,
-    validator: Any | None = None,
+    latlon_suffix: str = "s",
 ):
     """
     Read and process Echoview volume backscattering strength (Sv) export data.
@@ -35,8 +35,8 @@ def read_echoview_sv(
         Whether to impute missing or invalid latitude/longitude coordinates
     transect_num : float, optional
         Transect number to assign to all data in this file. If None, no transect number is added
-    validator : Any, optional
-        Validation object for data quality checks (currently unused)
+    latlon_suffix : str, default "s"
+        Coordinate suffix passed to :func:`echopop.ingest.nasc.rename_echoview_export_columns`
 
     Returns
     -------
@@ -56,7 +56,7 @@ def read_echoview_sv(
     ['sv_mean', 'latitude', 'longitude', 'transect_num', 'filename', ...]
     """
     # Read in the defined CSV file
-    sv_df = nasc.read_echoview_export(filename, validator)
+    sv_df = nasc.rename_echoview_export_columns(filename, latlon_suffix=latlon_suffix)
 
     # Don't read in if the file contents are empty
     if sv_df.empty or sv_df.dropna(axis=1, how="all").empty:
@@ -557,6 +557,7 @@ def ingest_echoview_sv(
     transect_pattern: str | None = None,
     aggregate_method: Literal["cells", "interval", "transect"] = "cells",
     impute_coordinates: bool = True,
+    latlon_suffix: str = "s",
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     r"""
     Complete ingestion pipeline for Echoview Sv export data.
@@ -579,6 +580,8 @@ def ingest_echoview_sv(
         Spatial aggregation method for acoustic data integration
     impute_coordinates : bool, default=True
         Whether to interpolate missing latitude/longitude coordinates
+    latlon_suffix : str, default "s"
+        Coordinate suffix passed to :func:`read_echoview_sv`
 
     Returns
     -------
@@ -659,7 +662,12 @@ def ingest_echoview_sv(
     # Concatenate the files
     sv = pd.concat(
         [
-            read_echoview_sv(row["file_path"], impute_coordinates, row["transect_num"])
+            read_echoview_sv(
+                row["file_path"],
+                impute_coordinates,
+                row["transect_num"],
+                latlon_suffix=latlon_suffix,
+            )
             for _, row in transect_num_df.iterrows()
         ]
     )

@@ -8,6 +8,7 @@ import re
 
 import pandas as pd
 import pandera.pandas as pa
+from pandera.typing import Series
 from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from ..core.validators import BaseDataFrame, BaseDictionary
@@ -16,12 +17,12 @@ from ..core.validators import BaseDataFrame, BaseDictionary
 class MeshDF(BaseDataFrame):
     """Pandera schema for validating the kriging mesh DataFrame."""
 
-    longitude: float | None = pa.Field(ge=-180.0, le=180.0, nullable=False)
-    latitude: float | None = pa.Field(ge=-90.0, le=90.0, nullable=False)
-    x: float | None = pa.Field(nullable=False)
-    y: float | None = pa.Field(nullable=False)
-    area: float | None = pa.Field(nullable=False)
-    fraction: float | None = pa.Field(nullable=False)
+    longitude: Series[float] | None = pa.Field(ge=-180.0, le=180.0, nullable=False)
+    latitude: Series[float] | None = pa.Field(ge=-90.0, le=90.0, nullable=False)
+    x: Series[float] | None = pa.Field(nullable=False)
+    y: Series[float] | None = pa.Field(nullable=False)
+    area: Series[float] | None = pa.Field(nullable=False)
+    fraction: Series[float] | None = pa.Field(nullable=False)
 
     class Config(BaseDataFrame.Config):
         """Pandera config for ``MeshDF``."""
@@ -57,10 +58,10 @@ class MeshDF(BaseDataFrame):
 class TransectsDF(BaseDataFrame):
     """Pandera schema for validating along-transect survey results DataFrames."""
 
-    longitude: float | None = pa.Field(ge=-180.0, le=180.0, nullable=False)
-    latitude: float | None = pa.Field(ge=-90.0, le=90.0, nullable=False)
-    x: float | None = pa.Field(nullable=False)
-    y: float | None = pa.Field(nullable=False)
+    longitude: Series[float] | None = pa.Field(ge=-180.0, le=180.0, nullable=False)
+    latitude: Series[float] | None = pa.Field(ge=-90.0, le=90.0, nullable=False)
+    x: Series[float] | None = pa.Field(nullable=False)
+    y: Series[float] | None = pa.Field(nullable=False)
 
     class Config(BaseDataFrame.Config):
         """Pandera config for ``TransectsDF``."""

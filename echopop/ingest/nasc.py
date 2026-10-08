@@ -341,7 +341,7 @@ def impute_bad_coordinates(data: pd.DataFrame, column: str) -> None:
             )
 
 
-def read_echoview_export(filename: Path, validator: Any | None = None) -> pd.DataFrame:
+def rename_echoview_export_columns(filename: Path, latlon_suffix: str = "s") -> pd.DataFrame:
     """
     Read a generic Echoview export CSV file.
 
@@ -351,13 +351,15 @@ def read_echoview_export(filename: Path, validator: Any | None = None) -> pd.Dat
     ----------
     filename : pathlib.Path
         Full path to the NASC CSV file.
-    validator : Any
-        File-specific validator, if defined.
+    latlon_suffix : str, default "s"
+        Suffix identifying the Echoview latitude and longitude columns to use. For example,
+        ``"s"`` selects ``lat_s`` and ``lon_s``.
 
     Returns
     -------
     pd.DataFrame
         Cleaned and formatted data.
+
     """
     # Read the CSV file
     # df = read_csv_file(filename)
@@ -366,32 +368,20 @@ def read_echoview_export(filename: Path, validator: Any | None = None) -> pd.Dat
     # Set column names to lowercase
     df.columns = df.columns.str.lower()
 
-    # Disambiguate possible overlapping longitude column names
-    # ---- Intersecting names
-    lon_columns = set(["lon_s", "lon_m", "lon_e"]).intersection(df.columns)
-    # ---- If only 1 is present
-    if len(lon_columns) == 1:
-        col = next(iter(lon_columns))
-        df.rename(columns={col: "longitude"}, inplace=True)
-    # ---- If > 1 is present and includes 'lon_m'
-    elif len(lon_columns) > 1 and "lon_s" in lon_columns:
-        df.rename(columns={"lon_s": "longitude"}, inplace=True)
-
-    # Disambiguate possible overlapping longitude column names
-    # ---- Intersecting names
-    lat_columns = set(["lat_s", "lat_m", "lat_e"]).intersection(df.columns)
-    # ---- If only 1 is present
-    if len(lat_columns) == 1:
-        col = next(iter(lat_columns))
-        df.rename(columns={col: "latitude"}, inplace=True)
-    # ---- If > 1 is present and includes 'lon_m'
-    elif len(lat_columns) > 1 and "lat_s" in lat_columns:
-        df.rename(columns={"lat_s": "latitude"}, inplace=True)
+    # Map the explicitly selected coordinate columns, unless canonical names already exist
+    suffix = latlon_suffix.lower()
+    coordinate_mapping = {
+        source: target
+        for source, target in {
+            f"lat_{suffix}": "latitude",
+            f"lon_{suffix}": "longitude",
+        }.items()
+        if target not in df.columns
+    }
+    df.rename(columns=coordinate_mapping, inplace=True)
 
     # Rename columns used by Echopop
     df.rename(columns=ECHOVIEW_TO_ECHOPOP, inplace=True)
-
-    # TODO: Validation step would be here
 
     return df
 
@@ -510,7 +500,7 @@ def read_echoview_nasc(
     filename: Path,
     transect_num: float,
     impute_coordinates: bool = True,
-    validator: Any | None = None,
+    latlon_suffix: str = "s",
 ) -> pd.DataFrame:
     """
     Read and pre-process a single Echoview NASC export CSV for one transect.
@@ -525,6 +515,8 @@ def read_echoview_nasc(
         Transect number to use for filtering or labeling.
     impute_coordinates : bool
         Instruct whether bad spatial coordinates should be imputed or not
+    latlon_suffix : str, default "s"
+        Coordinate suffix passed to :func:`rename_echoview_export_columns`.
 
     Returns
     -------
@@ -532,7 +524,7 @@ def read_echoview_nasc(
         Cleaned and formatted DataFrame
     """
     # Read in the defined CSV file
-    nasc_df = read_echoview_export(filename, validator)
+    nasc_df = rename_echoview_export_columns(filename, latlon_suffix=latlon_suffix)
 
     # Add transect number
     nasc_df["transect_num"] = transect_num
@@ -550,7 +542,9 @@ def read_echoview_nasc(
 
 
 def echoview_nasc_to_df(
-    filtered_df: pd.DataFrame, impute_coordinates: bool = True
+    filtered_df: pd.DataFrame,
+    impute_coordinates: bool = True,
+    latlon_suffix: str = "s",
 ) -> list[pd.DataFrame]:
     """
     Read and return Echoview NASC DataFrames for each file listed in the input DataFrame.
@@ -561,6 +555,8 @@ def echoview_nasc_to_df(
         DataFrame with columns "file_path" and "transect_num"
     impute_coordinates : bool
         Instruct whether bad spatial coordinates should be imputed or not
+    latlon_suffix : str, default "s"
+        Coordinate suffix passed to :func:`read_echoview_nasc`.
 
     Returns
     -------
@@ -568,7 +564,12 @@ def echoview_nasc_to_df(
         List of parsed and validated DataFrames for each file.
     """
     return [
-        read_echoview_nasc(row["file_path"], row["transect_num"], impute_coordinates)
+        read_echoview_nasc(
+            row["file_path"],
+            row["transect_num"],
+            impute_coordinates,
+            latlon_suffix=latlon_suffix,
+        )
         for _, row in filtered_df.iterrows()
     ]
 
@@ -625,6 +626,7 @@ def merge_echoview_nasc(
     default_transect_spacing: float = 10.0,
     default_latitude_threshold: float = 60.0,
     impute_coordinates: bool = True,
+    latlon_suffix: str = "s",
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     r"""
     Ingest and merge all Echoview NASC files (intervals, cells, layers).
@@ -642,6 +644,8 @@ def merge_echoview_nasc(
         calculated versus using the default value.
     impute_coordinates : bool
         Instruct whether bad spatial coordinates should be imputed or not
+    latlon_suffix : str, default "s"
+        Coordinate suffix passed to the Echoview export readers.
 
     Returns
     -------
@@ -670,7 +674,9 @@ def merge_echoview_nasc(
     # ---- Cells
     df_cells: pd.DataFrame = pd.concat(
         echoview_nasc_to_df(
-            valid_transect_num_df[valid_transect_num_df["file_type"] == "cells"], impute_coordinates
+            valid_transect_num_df[valid_transect_num_df["file_type"] == "cells"],
+            impute_coordinates,
+            latlon_suffix,
         )
     )
     # ---- Intervals
@@ -678,6 +684,7 @@ def merge_echoview_nasc(
         echoview_nasc_to_df(
             valid_transect_num_df[valid_transect_num_df["file_type"] == "intervals"],
             impute_coordinates,
+            latlon_suffix,
         )
     )
     # ---- Layers
@@ -685,6 +692,7 @@ def merge_echoview_nasc(
         echoview_nasc_to_df(
             valid_transect_num_df[valid_transect_num_df["file_type"] == "layers"],
             impute_coordinates,
+            latlon_suffix,
         )
     )
 

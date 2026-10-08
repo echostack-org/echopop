@@ -3,7 +3,7 @@
 Echopop is available for installation via pip, conda-forge, or by cloning the repository for development.
 
 ```{danger}
-Ensure you have Python 3.12 or 3.13 installed, as Python 3.14 has known dependency issues.
+Echopop supports Python 3.12, 3.13, and 3.14. Python 3.15 is not yet supported.
 ```
 
 ## pip
@@ -16,6 +16,9 @@ Install Echopop directly from PyPI:
 pip install echopop
 ```
 
+The current PyPI release requires Python <3.14. For Python 3.14, install the latest source as
+described below until a compatible release is published.
+
 ## conda-forge
 [![Conda version](https://img.shields.io/conda/vn/conda-forge/echopop)](https://anaconda.org/conda-forge/echopop)
 
@@ -24,6 +27,7 @@ Install Echopop from conda-forge with either Anaconda or Miniconda:
 ```shell
 conda install -c conda-forge echopop
 ```
+
 ```{attention}
 We recommend using the ``libmamba`` solver instead of the classic solver.
    See instructions [here](https://conda.github.io/conda-libmamba-solver/getting-started/)
@@ -34,6 +38,8 @@ We recommend using the ``libmamba`` solver instead of the classic solver.
 [![GitHub release](https://img.shields.io/github/v/release/echostack-org/echopop)](https://github.com/echostack-org/echopop/releases)
 
 If you need the latest development version or want to contribute, clone the repository and install from source:
+
+For Python 3.14, replace `python=3.12` with `python=3.14` in the commands below.
 
 ```shell
 # Clone the repository
