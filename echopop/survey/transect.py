@@ -18,13 +18,12 @@ def compute_interval_distance(
         'distance_s', 'distance_e', 'transect_spacing'
     interval_threshold : float, default 0.05
         Along-transect interval threshold for detecting erroneous values. Values that deviate from
-        the median interval by more than this threshold will be corrected using 'distance_e' -
-        'distance_s' calculation.
+        the median interval by more than this threshold will be replaced with the median interval.
 
     Returns
     -------
-    pd.DataFrame
-        Modified DataFrame with added 'distance_interval' column containing
+    None
+        Modifies the input DataFrame in place by adding a 'distance_interval' column containing
         along-transect interval distances.
 
     Examples
@@ -34,7 +33,7 @@ def compute_interval_distance(
     ...     'distance_e': [1, 2, 3, 4],
     ...     'transect_spacing': [0.1, 0.1, 0.1, 0.1]
     ... })
-    >>> set_interval_distance(df)
+    >>> compute_interval_distance(df)
     >>> 'distance_interval' in df.columns
     True
 
@@ -42,10 +41,12 @@ def compute_interval_distance(
     -----
     This function calculates the along-track transect interval length. It identifies and corrects
     potentially erroneous values at transect endpoints by comparing intervals to the median and
-    replacing outliers with direct distance calculations (distance_e - distance_s).
+    replacing outliers with the median of all calculated intervals.
 
     The interval calculation uses diff(periods=-1) to compute forward differences, making each
     interval represent the distance to the next measurement point.
+    The final interval is initially calculated as distance_e - distance_s and is also replaced
+    with the median if it exceeds the deviation threshold.
     """
     # Calculate the along-transect interval distance
     # ---- Use forward difference to get distance to next point
