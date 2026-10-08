@@ -18,7 +18,7 @@ This module contains constants and mappings for processing Echoview export data.
 # - 'time_s' → 'ping_time' : time of first ping in the interval/domain (HH:mm:ss.SSSS format)
 # - 'vl_end' → 'distance_e' : vessel log distance of the last ping in the interval/domain (nmi)
 # - 'vl_start' → 'disance_s' : vessel log distance of the first ping in the interval/domain (nmi)
-# - 'dist_e' → 'distance_e' : GPS-based distance of the last ping in the interval/domain (nmi), 
+# - 'dist_e' → 'distance_e' : GPS-based distance of the last ping in the interval/domain (nmi),
 #                             used when vessel long distance was not available.
 # - 'dist_s' → 'distance_s' : GPS-based distance of the first ping in the interval/domain (nmi)
 #                             used when vessel long distance was not available.
