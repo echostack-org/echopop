@@ -4,7 +4,7 @@ import pytest
 from echopop.survey import transect
 
 
-def test_get_transect_basic_functionality(basic_nasc_data):
+def test_compute_interval_distance_basic_functionality(basic_nasc_data):
     """Test basic functionality of transect.compute_interval_distance."""
     transect.compute_interval_distance(basic_nasc_data)
 
@@ -25,7 +25,7 @@ def test_get_transect_basic_functionality(basic_nasc_data):
     )
 
 
-def test_get_transect_single_row(transect_single_row):
+def test_compute_interval_distance_single_row(transect_single_row):
     """Test transect.compute_interval_distance with single row DataFrame."""
     transect.compute_interval_distance(transect_single_row)
 
@@ -37,7 +37,7 @@ def test_get_transect_single_row(transect_single_row):
     assert transect_single_row["distance_interval"].iloc[0] == expected_interval
 
 
-def test_get_transect_preserves_original(basic_nasc_data):
+def test_compute_interval_distance_preserves_original(basic_nasc_data):
     """Test that original DataFrame is not modified."""
     original_columns = basic_nasc_data.columns.tolist()
     transect.compute_interval_distance(basic_nasc_data)
@@ -49,8 +49,9 @@ def test_get_transect_preserves_original(basic_nasc_data):
     assert "distance_interval" in basic_nasc_data.columns
 
 
-def test_get_transect_irregular_spacing(irregular_spacing_data):
-    """Test transect.compute_interval_distance with irregular spacing."""
+def test_compute_interval_distance_irregular_spacing(irregular_spacing_data):
+    """Replace an irregular interval with the median rather than its recorded length."""
+    irregular_spacing_data.loc[2, "distance_e"] = 2.5
     transect.compute_interval_distance(irregular_spacing_data)
 
     # Check that distance_interval column was added
@@ -59,7 +60,12 @@ def test_get_transect_irregular_spacing(irregular_spacing_data):
     # Check that all values are non-negative
     assert (irregular_spacing_data["distance_interval"] >= 0).all()
 
-    # Check that last interval uses distance_e - distance_s
+    pd.testing.assert_series_equal(
+        irregular_spacing_data["distance_interval"],
+        pd.Series([1.0] * 5, name="distance_interval"),
+    )
+
+    # The final interval is within the threshold, so its recorded length is retained.
     last_interval = irregular_spacing_data["distance_interval"].iloc[-1]
     expected_last = (
         irregular_spacing_data["distance_e"].iloc[-1]
@@ -68,7 +74,19 @@ def test_get_transect_irregular_spacing(irregular_spacing_data):
     assert last_interval == expected_last
 
 
-def test_get_transect_empty_dataframe():
+def test_compute_interval_distance_final_interval_outlier(basic_nasc_data):
+    """Replace an outlying final interval with the median too."""
+    basic_nasc_data.loc[4, "distance_e"] = 6.0
+
+    transect.compute_interval_distance(basic_nasc_data)
+
+    pd.testing.assert_series_equal(
+        basic_nasc_data["distance_interval"],
+        pd.Series([1.0] * 5, name="distance_interval"),
+    )
+
+
+def test_compute_interval_distance_empty_dataframe():
     """Test transect.compute_interval_distance with empty DataFrame."""
     empty_df = pd.DataFrame(columns=["distance_s", "distance_e", "transect_spacing"])
 
@@ -76,7 +94,7 @@ def test_get_transect_empty_dataframe():
         transect.compute_interval_distance(empty_df)
 
 
-def test_get_transect_missing_columns():
+def test_compute_interval_distance_missing_columns():
     """Test transect.compute_interval_distance with missing required columns."""
     incomplete_df = pd.DataFrame({"distance_s": [1, 2, 3]})
 
