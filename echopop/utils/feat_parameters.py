@@ -16,7 +16,7 @@ def transect_mesh_region_2025(
     Generate region-specific transect boundaries for the 2025 NWFSC survey.
 
     This function defines the spatial boundaries for three distinct survey regions used in the
-    2019 Northwest Fisheries Science Center (NWFSC) survey. Each region has specific transect
+    2025 Northwest Fisheries Science Center (NWFSC) survey. Each region has specific transect
     numbering schemes and boundary definitions.
 
     Parameters
@@ -102,7 +102,7 @@ def transect_mesh_region_2023(
     Generate region-specific transect boundaries for the 2023 NWFSC survey.
 
     This function defines the spatial boundaries for three distinct survey regions used in the
-    2019 Northwest Fisheries Science Center (NWFSC) survey. Each region has specific transect
+    2023 Northwest Fisheries Science Center (NWFSC) survey. Each region has specific transect
     numbering schemes and boundary definitions.
 
     Parameters
@@ -188,7 +188,7 @@ def transect_mesh_region_2021(
     Generate region-specific transect boundaries for the 2019 NWFSC survey.
 
     This function defines the spatial boundaries for three distinct survey regions used in the
-    2019 Northwest Fisheries Science Center (NWFSC) survey. Each region has specific transect
+    2021 Northwest Fisheries Science Center (NWFSC) survey. Each region has specific transect
     numbering schemes and boundary definitions.
 
     Parameters
