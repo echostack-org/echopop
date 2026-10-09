@@ -44,6 +44,12 @@ def binify(
     None
         DataFrames are modified in place.
 
+    Warns
+    -----
+    UserWarning
+        If nonmissing input values fall outside the binning intervals. One warning
+        is emitted per affected DataFrame, reporting the column, count, and range.
+
     Notes
     -----
     The first and last edges extend half the adjacent spacing beyond the first
@@ -86,7 +92,17 @@ def binify(
     intervals = pd.IntervalIndex.from_breaks(edges, closed="right")
     for frame in frames:
         if bin_column in frame.columns:
-            frame[f"{bin_column}_bin"] = pd.cut(frame[bin_column], bins=intervals)
+            binned = pd.cut(frame[bin_column], bins=intervals)
+            out_of_range_count = int((frame[bin_column].notna() & binned.isna()).sum())
+            if out_of_range_count:
+                warnings.warn(
+                    f"{out_of_range_count} nonmissing value(s) in '{bin_column}' fall outside "
+                    f"the binning range ({edges[0]}, {edges[-1]}]; "
+                    "their bin assignments will be missing. Rows are retained.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+            frame[f"{bin_column}_bin"] = binned
 
 
 def _filter_rows(

@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -94,3 +96,41 @@ def test_invalid_bins(bins):
 def test_invalid_data():
     with pytest.raises(TypeError, match="data must be DataFrame or dict of DataFrames"):
         utils.binify("invalid", [1, 2], "age")
+
+
+@pytest.mark.parametrize(
+    "column, bins, values, expected_codes",
+    [
+        ("age", [1, 2], [0, 1, 2, 3, None], [-1, 0, 1, -1, -1]),
+        ("length", [2, 4], [1, 2, 5, 6, None], [-1, 0, 1, -1, -1]),
+    ],
+)
+def test_warns_for_out_of_range_values(column, bins, values, expected_codes):
+    frame = pd.DataFrame({column: pd.Series(values, dtype="Int64")})
+    with pytest.warns(UserWarning, match=f"2 nonmissing value.*'{column}'.*binning range") as caught:
+        utils.binify(frame, bins, column)
+    assert len(caught) == 1
+    np.testing.assert_array_equal(frame[f"{column}_bin"].cat.codes, expected_codes)
+    assert len(frame) == len(values)
+
+
+def test_missing_and_in_range_values_do_not_warn():
+    frame = pd.DataFrame({"age": pd.Series([1, 2, pd.NA], dtype="Int64")})
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        utils.binify(frame, [1, 2], "age")
+    assert not caught
+
+
+def test_dictionary_warns_once_per_affected_frame():
+    frames = {
+        "first": pd.DataFrame({"age": [0, 3]}),
+        "second": pd.DataFrame({"age": [3]}),
+        "valid": pd.DataFrame({"age": [1, 2]}),
+        "missing_column": pd.DataFrame({"other": [0]}),
+    }
+    with pytest.warns(UserWarning) as caught:
+        utils.binify(frames, [1, 2], "age")
+    assert len(caught) == 2
+    assert str(caught[0].message).startswith("2 nonmissing")
+    assert str(caught[1].message).startswith("1 nonmissing")
