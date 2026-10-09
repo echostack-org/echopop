@@ -9,7 +9,6 @@ from . import feat_parameters
 from .base import (
     apply_filters,
     binify,
-    binned_distribution,
     create_grouped_table,
     create_pivot_table,
     group_interpolator_creator,
@@ -27,7 +26,6 @@ __all__ = [
     # Generic utilities
     "apply_filters",
     "binify",
-    "binned_distribution",
     "create_grouped_table",
     "create_pivot_table",
     "group_interpolator_creator",
