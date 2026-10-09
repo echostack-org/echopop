@@ -10,12 +10,24 @@ import echopop.utils as utils
 @pytest.mark.parametrize(
     "bins, values, edges, codes",
     [
-        ([2, 4, 6], [-100, 1, 2, 3, 3.01, 5, 5.01, 6, 7, 100, np.nan],
-         [1, 3, 5, 7], [-1, -1, 0, 0, 1, 1, 2, 2, 2, -1, -1]),
-        ([20, 30, 50], [0, 15, 20, 25, 25.01, 30, 40, 40.01, 50, 60, 100, np.nan],
-         [15, 25, 40, 60], [-1, -1, 0, 0, 1, 1, 1, 2, 2, 2, -1, -1]),
-        ([0.25, 0.75], [-np.inf, -0.01, 0.25, 0.5, 0.51, 0.75, 1.01, np.inf, np.nan],
-         [0, 0.5, 1], [-1, -1, 0, 0, 1, 1, -1, -1, -1]),
+        (
+            [2, 4, 6],
+            [-100, 1, 2, 3, 3.01, 5, 5.01, 6, 7, 100, np.nan],
+            [1, 3, 5, 7],
+            [-1, -1, 0, 0, 1, 1, 2, 2, 2, -1, -1],
+        ),
+        (
+            [20, 30, 50],
+            [0, 15, 20, 25, 25.01, 30, 40, 40.01, 50, 60, 100, np.nan],
+            [15, 25, 40, 60],
+            [-1, -1, 0, 0, 1, 1, 1, 2, 2, 2, -1, -1],
+        ),
+        (
+            [0.25, 0.75],
+            [-np.inf, -0.01, 0.25, 0.5, 0.51, 0.75, 1.01, np.inf, np.nan],
+            [0, 0.5, 1],
+            [-1, -1, 0, 0, 1, 1, -1, -1, -1],
+        ),
     ],
     ids=["uniform", "uneven", "two-float-bins-and-infinities"],
 )
@@ -24,7 +36,9 @@ def test_binify_outputs(bins, values, edges, codes):
     original = frame.copy()
     assert utils.binify(frame, bins, "length") is None
     expected = pd.Categorical.from_codes(
-        codes, categories=pd.IntervalIndex.from_breaks(np.asarray(edges, dtype=float), closed="right"), ordered=True
+        codes,
+        categories=pd.IntervalIndex.from_breaks(np.asarray(edges, dtype=float), closed="right"),
+        ordered=True,
     )
     pd.testing.assert_series_equal(
         frame["length_bin"], pd.Series(expected, index=frame.index, name="length_bin")
@@ -33,12 +47,18 @@ def test_binify_outputs(bins, values, edges, codes):
     assert list(frame) == ["length", "length_bin"]
 
 
-@pytest.mark.parametrize("column, bins, values, codes", [
-    ("age", np.linspace(1, 22, 22), [0, 1, 2, 21, 22, 23],
-     [-1, 0, 1, 20, 21, -1]),
-    ("length", np.linspace(2, 80, 40), [0, 1, 2, 3, 4, 80, 81, 82],
-     [-1, -1, 0, 0, 1, 39, 39, -1]),
-])
+@pytest.mark.parametrize(
+    "column, bins, values, codes",
+    [
+        ("age", np.linspace(1, 22, 22), [0, 1, 2, 21, 22, 23], [-1, 0, 1, 20, 21, -1]),
+        (
+            "length",
+            np.linspace(2, 80, 40),
+            [0, 1, 2, 3, 4, 80, 81, 82],
+            [-1, -1, 0, 0, 1, 39, 39, -1],
+        ),
+    ],
+)
 def test_workflow_bins(column, bins, values, codes):
     frame = pd.DataFrame({column: values})
     utils.binify(frame, bins, column)
@@ -107,7 +127,9 @@ def test_invalid_data():
 )
 def test_warns_for_out_of_range_values(column, bins, values, expected_codes):
     frame = pd.DataFrame({column: pd.Series(values, dtype="Int64")})
-    with pytest.warns(UserWarning, match=f"2 nonmissing value.*'{column}'.*binning range") as caught:
+    with pytest.warns(
+        UserWarning, match=f"2 nonmissing value.*'{column}'.*binning range"
+    ) as caught:
         utils.binify(frame, bins, column)
     assert len(caught) == 1
     np.testing.assert_array_equal(frame[f"{column}_bin"].cat.codes, expected_codes)

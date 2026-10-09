@@ -7,8 +7,8 @@ survey-specific parameterization.
 
 from . import feat_parameters
 from .base import (
-    binify,
     apply_filters,
+    binify,
     create_grouped_table,
     create_pivot_table,
     group_interpolator_creator,

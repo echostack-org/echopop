@@ -84,11 +84,13 @@ def binify(
         )
 
     half_spacing = np.diff(bins) / 2.0
-    edges = np.concatenate([
-        [bins[0] - half_spacing[0]],
-        bins[:-1] + half_spacing,
-        [bins[-1] + half_spacing[-1]],
-    ])
+    edges = np.concatenate(
+        [
+            [bins[0] - half_spacing[0]],
+            bins[:-1] + half_spacing,
+            [bins[-1] + half_spacing[-1]],
+        ]
+    )
     intervals = pd.IntervalIndex.from_breaks(edges, closed="right")
     for frame in frames:
         if bin_column in frame.columns:
