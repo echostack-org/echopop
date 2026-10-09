@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from echopop.utils import binned_distribution
+from echopop.utils import binify
 
 
 def fit_length_weight_regression(data: pd.DataFrame) -> pd.Series:
@@ -196,7 +196,9 @@ def length_binned_weights(
     """
     # Make a copy to avoid modifying original data
     data = data.copy()  # Create length distribution from bins
-    length_distribution = binned_distribution(length_bins)
+    length_distribution = pd.DataFrame({"bin": length_bins})
+    binify(length_distribution, length_bins, "bin")
+    length_distribution = length_distribution.rename(columns={"bin_bin": "interval"})
 
     # Handle different coefficient input types
     if isinstance(regression_coefficients, pd.Series):

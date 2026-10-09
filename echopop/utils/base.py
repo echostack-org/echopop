@@ -18,164 +18,75 @@ from ..core.validators import BaseDictionary
 from ..validators import ValidateHaulUID
 
 
-def binned_distribution(bins: np.ndarray[np.number]) -> pd.DataFrame:
-    """
-    Create centered bins for data binning operations.
-
-    This function takes an array of bin edges and creates centered bins by calculating
-    the mean bin width and extending the bins to create proper intervals for binning.
-    The centered bins can be used with :func:`pandas.cut` for data discretization.
-
-    Parameters
-    ----------
-    bins : |np.ndarray[np.number]|
-        Array of bin edge values. Must be 1-dimensional and contain at least 2 elements.
-        Values should be in ascending order for proper binning behavior.
-
-    Returns
-    -------
-    |pd.DataFrame|
-        DataFrame with columns:
-
-        - ``'bin'``: Original bin values
-
-        - ``'interval'``: :class:`pandas.Interval` objects representing the binning intervals
-
-    Raises
-    ------
-    ValueError
-        If bins array has fewer than 2 elements or is not 1-dimensional.
-    TypeError
-        If bins is not a numpy array or cannot be converted to one.
-
-    Examples
-    --------
-    >>> import numpy as np
-    >>> bins = np.array([1, 2, 3, 4, 5])
-    >>> result = binned_distribution(bins)
-    >>> print(result.columns)
-    Index(['bin', 'interval'], dtype='object')
-
-    >>> bins = np.linspace(0, 10, 11)
-    >>> result = binned_distribution(bins)
-    >>> len(result) == len(bins)
-
-    Notes
-    -----
-    The function calculates the bin width as the mean of half the differences between consecutive
-    bin values. This approach works well for both evenly and unevenly spaced bins. The centered
-    bins extend beyond the original range by one bin width on each side, ensuring that all original
-    bin values fall within the created intervals.
-    """
-    # Compute binwidth as mean of half the differences
-    binwidth = np.mean(np.diff(bins) / 2.0)
-
-    # Create centered bins by extending the range
-    centered_bins = np.concatenate([[bins[0] - binwidth], bins + binwidth])
-
-    # Generate DataFrame with bins and intervals
-    intervals = pd.cut(bins, centered_bins)
-    return pd.DataFrame({"bin": bins, "interval": intervals})
-
-
 def binify(
     data: pd.DataFrame | dict[str, pd.DataFrame],
-    bins: np.ndarray[np.number],
+    bins: np.ndarray,
     bin_column: str,
 ) -> None:
-    """
-    Apply binning to biological data using predefined bin distributions.
-
-    This function bins continuous variables (like length or age) in biological datasets using bin
-    edge arrays. It creates interval distributions internally and can handle single DataFrames or
-    dictionaries of DataFrames, automatically skipping DataFrames that don't contain the target
-    column. The data is modified in place.
+    """Add an ordered interval column to each DataFrame in place.
 
     Parameters
     ----------
-    data : |pd.DataFrame| or Dict[str, |pd.DataFrame|]
-        Target data to bin. Can be a single DataFrame or dictionary of DataFrames. Data are
-        modified in place.
-    bins : np.ndarray[|np.number|]
-        Array of bin edge values. Must be 1-dimensional and contain at least 2 elements. Values
-        should be in ascending order for proper binning behavior.
+    data : pandas.DataFrame or dict of pandas.DataFrame
+        Frames to modify. Frames without ``bin_column`` and non-frame dictionary
+        entries are skipped.
+    bins : array-like
+        At least two finite, strictly increasing bin locations. Internal edges
+        are midpoints between consecutive locations, as in MATLAB ``hist``.
+        Uniformly spaced locations are the interval centers. For uneven spacing,
+        the interval centers generally differ from the supplied locations.
     bin_column : str
-        Name of the column in data to apply binning to (e.g., ``'length'``, ``'age'``).
+        Column to discretize. Adds ``<bin_column>_bin`` as ordered categorical
+        pandas intervals, preserving original columns and index.
 
     Returns
     -------
     None
-        Data is modified in place, nothing is returned.
+        DataFrames are modified in place.
+
+    Notes
+    -----
+    The first and last edges extend half the adjacent spacing beyond the first
+    and last locations. Intervals include their right boundary, but exclude their
+    left boundary. Missing and out-of-range values receive missing bin assignments;
+    rows are not removed. Unlike MATLAB ``hist``, outer bins are finite.
 
     Examples
     --------
-    >>> import pandas as pd
-    >>> import numpy as np
-    >>> from echopop.nwfsc_feat.utils import binify
-    >>>
-    >>>
-    >>> # Create sample data
-    >>> bio_data = pd.DataFrame({
-    ...     'length': [25.5, 30.2, 35.8, 40.1, 45.3],
-    ...     'weight': [150, 220, 310, 420, 580]
-    ... })
-    >>>
-    >>>
-    >>> # Create bin edges
-    >>> length_bins = np.array([20, 30, 40, 50])
-    >>>
-    >>>
-    >>> # Apply binning (modifies bio_data in place)
-    >>> binify(bio_data, length_bins, 'length')
-    >>> print('length_bin' in bio_data.columns)
-    True
-    >>>
-    >>>
-    >>> # Works with numpy linspace too
-    >>> age_bins = np.linspace(start=1., stop=22., num=22)
-    >>> bio_data['age'] = [5, 8, 12, 15, 18]
-    >>> binify(bio_data, age_bins, 'age')
-    >>> print('age_bin' in bio_data.columns)
-    True
-    >>>
-    >>>
-    >>> # Works with dictionary of DataFrames too
-    >>> data_dict = {'catch': bio_data.copy(), 'length': bio_data.copy()}
-    >>> binify(data_dict, length_bins, 'length')
-    >>> print('length_bin' in data_dict['catch'].columns)
-    True
-    """  # Create bin distribution internally using binned_distribution function
-    bin_distribution = binned_distribution(bins)
-
-    # Extract bin categories
-    try:
-        bin_intervals = bin_distribution["interval"].cat.categories
-    except AttributeError as err:
-        raise ValueError("Failed to create proper interval categories from bins") from err
-
-    # Format new bin column name
-    bin_column_name = f"{bin_column}_bin"
-
-    def _apply_binning(df: pd.DataFrame) -> None:
-        """Apply binning to a single DataFrame in place, skip if column missing."""
-        if bin_column not in df.columns:
-            return  # Skip DataFrames without target column
-
-        df[bin_column_name] = pd.cut(df[bin_column], bins=bin_intervals)
-
-    # Handle different input types
+    >>> frame = pd.DataFrame({"length": [20, 30, 50, 100]})
+    >>> binify(frame, np.array([20, 30, 50]), "length")
+    >>> frame["length_bin"].cat.categories
+    IntervalIndex([(15.0, 25.0], (25.0, 40.0], (40.0, 60.0]], dtype='interval[float64, right]')
+    """
     if isinstance(data, pd.DataFrame):
-        # Single DataFrame
-        _apply_binning(data)
-
+        frames = (data,)
     elif isinstance(data, dict):
-        # Dictionary of DataFrames - modify each DataFrame in place
-        for _key, df in data.items():
-            if isinstance(df, pd.DataFrame):
-                _apply_binning(df)  # Automatically skips if column missing
-
+        frames = (frame for frame in data.values() if isinstance(frame, pd.DataFrame))
     else:
         raise TypeError(f"data must be DataFrame or dict of DataFrames, got {type(data)}")
+
+    bins = np.asarray(bins, dtype=float)
+    if (
+        bins.ndim != 1
+        or bins.size < 2
+        or not np.isfinite(bins).all()
+        or not (bins[1:] > bins[:-1]).all()
+    ):
+        raise ValueError(
+            "bins must be one-dimensional, finite, and strictly increasing, "
+            "with at least two values"
+        )
+
+    half_spacing = np.diff(bins) / 2.0
+    edges = np.concatenate([
+        [bins[0] - half_spacing[0]],
+        bins[:-1] + half_spacing,
+        [bins[-1] + half_spacing[-1]],
+    ])
+    intervals = pd.IntervalIndex.from_breaks(edges, closed="right")
+    for frame in frames:
+        if bin_column in frame.columns:
+            frame[f"{bin_column}_bin"] = pd.cut(frame[bin_column], bins=intervals)
 
 
 def _filter_rows(
