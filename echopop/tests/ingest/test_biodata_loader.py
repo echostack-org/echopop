@@ -3,7 +3,11 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from echopop.ingest.biological import apply_ship_survey_filters, load_biological_data
+from echopop.ingest.biological import (
+    apply_ship_survey_filters,
+    load_biodata_db_views,
+    load_biological_data,
+)
 
 
 def test_load_biological_data_basic(bio_excel_file, bio_sheet_map):
@@ -94,3 +98,54 @@ def test_apply_ship_survey_filters_no_subset(biological_data):
 
     assert result is not df  # Not the same object
     pd.testing.assert_frame_equal(result, df)  # But same content
+
+
+# Ingest from database tests
+def test_load_biological_data_basic_from_db(database_credentials, bio_data_table_map):
+    """Test basic loading of biological data without optional parameters."""
+    result = load_biodata_db_views(database_credentials, bio_data_table_map)
+
+    assert isinstance(result, dict)
+
+    for df in result.values():
+        assert isinstance(df, pd.DataFrame)
+        assert not df.empty
+
+
+def test_load_biological_data_with_column_map_from_db(
+    database_credentials, bio_data_table_map, column_name_map
+):
+    """Test loading with column name mapping."""
+    result = load_biodata_db_views(
+        database_credentials, bio_data_table_map, column_name_map=column_name_map
+    )
+
+    if "catch" in result:
+        assert "haul_weight" in result["catch"].columns
+        assert result["catch"].loc[3, "haul_weight"] == 250.0
+        assert "haul_num" in result["catch"].columns
+        assert "weight_in_haul" not in result["catch"].columns
+
+    if "specimen" in result:
+        assert "species_code" in result["specimen"].columns
+        assert result["specimen"].loc[2, "species_code"] == 22500
+        assert "haul_num" in result["catch"].columns
+
+
+def test_load_biological_data_with_subset_from_db(
+    database_credentials, bio_data_table_map, pg_subset_dict, column_name_map
+):
+    """Test loading with subset filtering."""
+    result = load_biodata_db_views(
+        database_credentials,
+        bio_data_table_map,
+        subset_dict=pg_subset_dict,
+        column_name_map=column_name_map,
+    )
+
+    for df in result.values():
+        if "species_code" in df.columns:
+            assert (df["species_code"] == 22500).all()
+
+        if "ship" in df.columns:
+            assert (df["ship"] == 101).all()
