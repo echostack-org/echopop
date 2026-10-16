@@ -11,6 +11,7 @@ from echopop.survey.biology import (
     length_binned_weights,
     quantize_length_data,
 )
+from echopop.utils import binify
 
 
 def test_fit_length_weight_regression_basic(length_weight_data):
@@ -250,6 +251,37 @@ def test_quantize_length_data_different_groups():
         & (result.index.get_level_values("length") == 20.0)
     )
     assert result[mask]["length_count"].iloc[0] == 2
+
+
+@pytest.mark.parametrize(
+    "impute_bins, threshold, expected_weights",
+    [
+        (True, 0, [12.0, 100.0, 360.0]),
+        (True, 2, [12.0, 160.0, 360.0]),
+        (False, 2, [12.0, 100.0, 0.0]),
+    ],
+)
+def test_length_binned_weights_output_values(impute_bins, threshold, expected_weights):
+    """Check observed means, sparse-bin imputation, and an empty bin."""
+    bins = np.array([20.0, 40.0, 60.0])
+    data = pd.DataFrame({"length": [20.0, 21.0, 40.0], "weight": [10.0, 14.0, 100.0]})
+    binify(data, bins, "length")
+
+    # Modeled weight = 0.1 * length**2: [40, 160, 360].
+    result = length_binned_weights(
+        data,
+        bins,
+        pd.Series({"intercept": -1.0, "slope": 2.0}),
+        impute_bins=impute_bins,
+        minimum_count_threshold=threshold,
+    )
+    expected = xr.DataArray(
+        expected_weights,
+        dims=["length_bin"],
+        coords={"length_bin": pd.IntervalIndex.from_breaks([10.0, 30.0, 50.0, 70.0])},
+        name="weight_fitted",
+    )
+    xr.testing.assert_identical(result, expected)
 
 
 def test_length_binned_weights_basic_functionality(
