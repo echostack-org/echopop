@@ -366,7 +366,8 @@ class JollyHampton:
                 np.array(
                     [
                         self.rng.choice(
-                            transect_df.loc[j, "transect_num"].values,
+                            # transect_df.loc[j, "transect_num"].values,
+                            transect_df.loc[[j], "transect_num"].to_numpy(),
                             size=self.strata_summary.loc[j, "num_transects_to_sample"],
                             replace=False,
                         )
