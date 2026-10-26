@@ -1,29 +1,25 @@
-<div>
+# Echopop
+
+<div align="center">
   <a href="https://doi.org/10.5281/zenodo.11454148">
     <img src="https://zenodo.org/badge/DOI/10.5281/zenodo.11454148.svg" alt="DOI">
   </a>
-  <a href="https://raw.githubusercontent.com/echostack-org/echopop/master/LICENSE">
-    <img alt="GitHub License" src="https://img.shields.io/github/license/echostack-org/echopop">
+  <a href="https://github.com/echostack-org/echopop/blob/main/LICENSE">
+    <img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="Apache 2.0 license">
   </a>
-</div>
-
-<div>
   <a href="https://echopop.readthedocs.io/en/latest/?badge=latest">
-    <img src="https://readthedocs.org/projects/echopop/badge/?version=latest"/>
+    <img src="https://readthedocs.org/projects/echopop/badge/?version=latest" alt="docs">
   </a>
-</div>
-
-<div>
   <a href="https://pypi.org/project/echopop/">
-    <img src="https://img.shields.io/pypi/v/echopop.svg"/>
+    <img src="https://img.shields.io/pypi/v/echopop.svg" alt="PyPI version">
   </a>
   <a href="https://anaconda.org/conda-forge/echopop">
-    <img src="https://img.shields.io/conda/vn/conda-forge/echopop.svg"/>
+    <img src="https://img.shields.io/conda/vn/conda-forge/echopop.svg" alt="Conda version">
+  </a>
+  <a href="https://scientific-python.org/specs/spec-0000/">
+    <img src="https://img.shields.io/badge/SPEC-0-green?labelColor=%23004811&color=%235CA038" alt="SPEC 0">
   </a>
 </div>
-
-
-# Echopop
 
 Echopop combines acoustic data collected by echosounders with biological "ground truth" information from trawls to produce biological estimates, such as biomass and abundance. Here, "pop" stands for the animal "population."
 

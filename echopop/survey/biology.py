@@ -4,8 +4,6 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from echopop.utils import binned_distribution
-
 
 def fit_length_weight_regression(data: pd.DataFrame) -> pd.Series:
     """
@@ -133,7 +131,7 @@ def quantize_length_data(df, group_columns: list[str]):
 
 def length_binned_weights(
     data: pd.DataFrame,
-    length_bins: np.ndarray,
+    length_bin_edges: np.ndarray,
     regression_coefficients: pd.Series | pd.DataFrame,
     impute_bins: bool = True,
     minimum_count_threshold: int = 0,
@@ -151,8 +149,10 @@ def length_binned_weights(
     data : pd.DataFrame
         Specimen data containing 'length', 'weight', and 'length_bin' columns. The 'length_bin'
         column must already exist in the data.
-    length_distribution : pd.DataFrame
-        DataFrame with length bin information, containing 'bin' and 'interval' columns.
+    length_bin_edges : numpy.ndarray
+        Explicit increasing length-bin edges, matching those used with ``pandas.cut``
+        to create the input's ``length_bin`` column. Regression weights are evaluated
+        at the midpoint of each interval.
     regression_coefficients : pd.Series or pd.DataFrame
         Length-weight regression coefficients from fit_length_weight_regression().
         If DataFrame, represents grouped coefficients (e.g., by sex).
@@ -183,20 +183,22 @@ def length_binned_weights(
     --------
     >>> # Single coefficient set
     >>> coeffs = fit_length_weight_regression(specimen_data)
-    >>> fitted = compute_binned_weights(specimen_data, length_dist, coeffs)
+    >>> fitted = length_binned_weights(specimen_data, length_bin_edges, coeffs)
 
     >>> # Grouped coefficients (e.g., by sex)
     >>> sex_coeffs = specimen_data.groupby('sex').apply(fit_length_weight_regression)
-    >>> fitted = compute_binned_weights(specimen_data, length_dist, sex_coeffs,
+    >>> fitted = length_binned_weights(specimen_data, length_bin_edges, sex_coeffs,
     ...                                minimum_count_threshold=5)
 
     >>> # No imputation - use only observed means
-    >>> fitted = compute_binned_weights(specimen_data, length_dist, coeffs,
+    >>> fitted = length_binned_weights(specimen_data, length_bin_edges, coeffs,
     ...                                impute_bins=False)
     """
     # Make a copy to avoid modifying original data
-    data = data.copy()  # Create length distribution from bins
-    length_distribution = binned_distribution(length_bins)
+    data = data.copy()
+    # Use pandas.cut to retain the same interval labels as the input binning.
+    intervals = pd.cut(pd.Series(dtype=float), bins=length_bin_edges).cat.categories
+    length_distribution = pd.DataFrame({"bin": intervals.mid, "interval": intervals})
 
     # Handle different coefficient input types
     if isinstance(regression_coefficients, pd.Series):
