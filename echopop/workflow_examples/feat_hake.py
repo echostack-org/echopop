@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 from lmfit import Parameters
 
@@ -315,23 +316,16 @@ dict_kriging_params, dict_variogram_params = load_kriging_variogram_params(
 # ==================================================================================================
 # Generate binned distributions [age, length]
 # -------------------------------------------
-AGE_BINS = np.linspace(start=1.0, stop=22.0, num=22)
-LENGTH_BINS = np.linspace(start=2.0, stop=80.0, num=40)
+AGE_BIN_EDGES = np.arange(0.5, 23.0, 1.0)
+LENGTH_BIN_EDGES = np.arange(1.0, 82.0, 2.0)
 
 #
 # ---- Length
-utils.binify(
-    data=dict_df_bio,
-    bins=LENGTH_BINS,
-    bin_column="length",
-)
+for dataset in ("specimen", "length"):
+    dict_df_bio[dataset]["length_bin"] = pd.cut(dict_df_bio[dataset]["length"], bins=LENGTH_BIN_EDGES)
 
 # Age
-utils.binify(
-    data=dict_df_bio,
-    bins=AGE_BINS,
-    bin_column="age",
-)
+dict_df_bio["specimen"]["age_bin"] = pd.cut(dict_df_bio["specimen"]["age"], bins=AGE_BIN_EDGES)
 
 # ==================================================================================================
 # Fit length-weight regression to the binned data
@@ -362,7 +356,7 @@ dict_length_weight_coefs["sex"] = (
 # Sex-specific (grouped coefficients)
 da_binned_weights_sex = biology.length_binned_weights(
     data=dict_df_bio["specimen"],
-    length_bins=LENGTH_BINS,
+    length_bin_edges=LENGTH_BIN_EDGES,
     regression_coefficients=dict_length_weight_coefs["sex"],
     impute_bins=True,
     minimum_count_threshold=5,
@@ -371,7 +365,7 @@ da_binned_weights_sex = biology.length_binned_weights(
 # All fish (single coefficient set)
 da_binned_weights_all = biology.length_binned_weights(
     data=dict_df_bio["specimen"].assign(sex="all"),
-    length_bins=LENGTH_BINS,
+    length_bin_edges=LENGTH_BIN_EDGES,
     regression_coefficients=dict_length_weight_coefs["all"],
     impute_bins=True,
     minimum_count_threshold=5,
