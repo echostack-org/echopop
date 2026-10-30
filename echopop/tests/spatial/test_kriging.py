@@ -2,8 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from echopop.geostatistics import kriging as kriging_module
-from echopop.geostatistics import variogram_models as vgm
+from echopop.geostatistics import kriging as kriging_module, variogram_models as vgm
 from echopop.geostatistics.kriging import (
     Kriging,
     adaptive_search_radius,
@@ -248,6 +247,7 @@ def test_ordinary_kriging_matches_reduced_neighborhood(inside_count, model, monk
 
     assert solver_sizes == [inside_count + 1]
     np.testing.assert_allclose(result[0], [estimate, variance, cv], rtol=1e-10, atol=1e-12)
+
 
 def test_adaptive_search_radius_with_strategy(
     sample_sparse_distance_matrix,
