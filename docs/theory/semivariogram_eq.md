@@ -245,11 +245,11 @@ The rational quadratic model provides polynomial decay and can interpolate betwe
 ### Sinc
 
 $$
-\gamma(h) = C_0 + C_1 \left[1 - \frac{\sin(bh)}{bh}\right]
+\gamma(h) = C_0 + C_1 \left( 1 - \frac{\sin(\pi h/a)}{\pi h/a} \right)
 \label{eq:sinc}
 $$
 
-The angular frequency $b$ has inverse distance units. The normalized correlation equals one at $bh=0$, so the function returns $C_0$ at zero lag and at every lag when $b=0$. For $b>0$, its first correlation zero occurs at $h=\pi/b$, where the semivariance equals the sill. This model is valid for isotropic fields in up to three dimensions. {cite:p}`chiles_geostatistics_2012`
+The sinc model generates regular oscillatory patterns, which are suitable for modeling spatial phenomena with periodic or wave-like structures. It is less commonly used but can be valuable for specialized applications. {cite:p}`chiles_geostatistics_2012`
 
 ---
 
