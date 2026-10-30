@@ -252,12 +252,46 @@ def test_quantize_length_data_different_groups():
     assert result[mask]["length_count"].iloc[0] == 2
 
 
+@pytest.mark.parametrize(
+    "edges, impute_bins, threshold, expected_weights",
+    [
+        ([10, 30, 50, 70], True, 0, [12.0, 100.0, 360.0]),
+        ([10, 30, 50, 70], True, 2, [12.0, 160.0, 360.0]),
+        ([10, 30, 50, 70], False, 2, [12.0, 100.0, 0.0]),
+        ([10, 30, 60, 100], True, 0, [12.0, 100.0, 640.0]),
+        ([10, 30, 60, 100], True, 2, [12.0, 202.5, 640.0]),
+        ([10, 30, 60, 100], False, 2, [12.0, 100.0, 0.0]),
+    ],
+)
+def test_length_binned_weights_output_values(edges, impute_bins, threshold, expected_weights):
+    """Check weights and interval coordinates for uniform and uneven explicit edges."""
+    bins = np.asarray(edges, dtype=float)
+    data = pd.DataFrame({"length": [20.0, 21.0, 40.0], "weight": [10.0, 14.0, 100.0]})
+    data["length_bin"] = pd.cut(data["length"], bins=bins)
+
+    # Modeled weight = 0.1 * midpoint**2; the first observed mean is 12.
+    result = length_binned_weights(
+        data,
+        bins,
+        pd.Series({"intercept": -1.0, "slope": 2.0}),
+        impute_bins=impute_bins,
+        minimum_count_threshold=threshold,
+    )
+    expected = xr.DataArray(
+        expected_weights,
+        dims=["length_bin"],
+        coords={"length_bin": pd.IntervalIndex.from_breaks(bins)},
+        name="weight_fitted",
+    )
+    xr.testing.assert_identical(result, expected)
+
+
 def test_length_binned_weights_basic_functionality(
-    sample_specimen_data, sample_length_bins, single_regression_coefficients
+    sample_specimen_data, sample_length_bin_edges, single_regression_coefficients
 ):
     """Test basic functionality of biology.length_binned_weights."""
     result = length_binned_weights(
-        sample_specimen_data, sample_length_bins, single_regression_coefficients
+        sample_specimen_data, sample_length_bin_edges, single_regression_coefficients
     )
 
     # Typing
@@ -271,11 +305,11 @@ def test_length_binned_weights_basic_functionality(
 
 
 def test_length_binned_weights_grouped_coefficients(
-    sample_specimen_data, sample_length_bins, grouped_regression_coefficients
+    sample_specimen_data, sample_length_bin_edges, grouped_regression_coefficients
 ):
     """Test with grouped regression coefficients."""
     result = length_binned_weights(
-        sample_specimen_data, sample_length_bins, grouped_regression_coefficients
+        sample_specimen_data, sample_length_bin_edges, grouped_regression_coefficients
     )
 
     # Should return wide format with sex as columns when grouping
@@ -286,12 +320,12 @@ def test_length_binned_weights_grouped_coefficients(
 
 
 def test_length_binned_weights_impute_bins_false(
-    sample_specimen_data, sample_length_bins, single_regression_coefficients
+    sample_specimen_data, sample_length_bin_edges, single_regression_coefficients
 ):
     """Test with impute_bins=False."""
     result = length_binned_weights(
         sample_specimen_data,
-        sample_length_bins,
+        sample_length_bin_edges,
         single_regression_coefficients,
         impute_bins=False,
     )
@@ -304,13 +338,13 @@ def test_length_binned_weights_impute_bins_false(
 
 
 def test_length_binned_weights_minimum_count_threshold(
-    sample_specimen_data, sample_length_bins, single_regression_coefficients
+    sample_specimen_data, sample_length_bin_edges, single_regression_coefficients
 ):
     """Test with different minimum_count_threshold values."""
     # High threshold - should use more modeled weights
     result_high = length_binned_weights(
         sample_specimen_data,
-        sample_length_bins,
+        sample_length_bin_edges,
         single_regression_coefficients,
         minimum_count_threshold=10,
     )
@@ -318,7 +352,7 @@ def test_length_binned_weights_minimum_count_threshold(
     # Low threshold - should use more observed means
     result_low = length_binned_weights(
         sample_specimen_data,
-        sample_length_bins,
+        sample_length_bin_edges,
         single_regression_coefficients,
         minimum_count_threshold=1,
     )
@@ -332,12 +366,12 @@ def test_length_binned_weights_minimum_count_threshold(
 
 @pytest.mark.skip(reason="This test is outdated for xarray migration.")
 def test_length_binned_weights_zero_threshold(
-    sample_specimen_data, sample_length_bins, single_regression_coefficients
+    sample_specimen_data, sample_length_bin_edges, single_regression_coefficients
 ):
     """Test with minimum_count_threshold=0."""
     result = length_binned_weights(
         sample_specimen_data,
-        sample_length_bins,
+        sample_length_bin_edges,
         single_regression_coefficients,
         minimum_count_threshold=0,
     )
@@ -350,11 +384,11 @@ def test_length_binned_weights_zero_threshold(
 
 @pytest.mark.skip(reason="This test is outdated for xarray migration.")
 def test_length_binned_weights_minimal_data(
-    reduced_specimen_data, sample_length_bins, single_regression_coefficients
+    reduced_specimen_data, sample_length_bin_edges, single_regression_coefficients
 ):
     """Test with minimal specimen data."""
     result = length_binned_weights(
-        reduced_specimen_data, sample_length_bins, single_regression_coefficients
+        reduced_specimen_data, sample_length_bin_edges, single_regression_coefficients
     )
 
     assert isinstance(result, pd.DataFrame)
@@ -363,11 +397,11 @@ def test_length_binned_weights_minimal_data(
 
 @pytest.mark.skip(reason="This test is outdated for xarray migration.")
 def test_length_binned_weights_missing_weights(
-    specimen_data_missing_weights, sample_length_bins, single_regression_coefficients
+    specimen_data_missing_weights, sample_length_bin_edges, single_regression_coefficients
 ):
     """Test handling of missing weight values."""
     result = length_binned_weights(
-        specimen_data_missing_weights, sample_length_bins, single_regression_coefficients
+        specimen_data_missing_weights, sample_length_bin_edges, single_regression_coefficients
     )
 
     assert isinstance(result, pd.DataFrame)
@@ -378,15 +412,15 @@ def test_length_binned_weights_missing_weights(
 
 @pytest.mark.skip(reason="This test is outdated for xarray migration.")
 def test_length_binned_weights_large_dataset(
-    large_specimen_dataset, sample_length_bins, single_regression_coefficients
+    large_specimen_dataset, sample_length_bin_edges, single_regression_coefficients
 ):
     """Test performance with large dataset."""
     result = length_binned_weights(
-        large_specimen_dataset, sample_length_bins, single_regression_coefficients
+        large_specimen_dataset, sample_length_bin_edges, single_regression_coefficients
     )
 
     assert isinstance(result, pd.DataFrame)
-    assert len(result) == len(sample_length_bins)
+    assert len(result) == len(sample_length_bin_edges)
     # Should return long format with additional columns when no grouping
     expected_columns = ["length_bin", "count", "weight_mean", "weight_modeled", "weight_fitted"]
     assert list(result.columns) == expected_columns
@@ -395,11 +429,11 @@ def test_length_binned_weights_large_dataset(
 
 @pytest.mark.skip(reason="This test is outdated for xarray migration.")
 def test_length_binned_weights_empty_data(
-    null_specimen_data, sample_length_bins, single_regression_coefficients
+    null_specimen_data, sample_length_bin_edges, single_regression_coefficients
 ):
     """Test with empty specimen data."""
     result = length_binned_weights(
-        null_specimen_data, sample_length_bins, single_regression_coefficients
+        null_specimen_data, sample_length_bin_edges, single_regression_coefficients
     )
 
     assert isinstance(result, pd.DataFrame)
@@ -408,12 +442,12 @@ def test_length_binned_weights_empty_data(
 
 @pytest.mark.skip(reason="This test is outdated for xarray migration.")
 def test_length_binned_weights_uneven_distribution(
-    uneven_specimen_data, sample_length_bins, single_regression_coefficients
+    uneven_specimen_data, sample_length_bin_edges, single_regression_coefficients
 ):
     """Test with uneven distribution of specimens across bins."""
     result = length_binned_weights(
         uneven_specimen_data,
-        sample_length_bins,
+        sample_length_bin_edges,
         single_regression_coefficients,
         minimum_count_threshold=2,
     )
@@ -426,11 +460,11 @@ def test_length_binned_weights_uneven_distribution(
 
 @pytest.mark.skip(reason="This test is outdated for xarray migration.")
 def test_length_binned_weights_multiple_groups(
-    specimen_data_multiple_groups, sample_length_bins, coefficients_with_multiple_groups
+    specimen_data_multiple_groups, sample_length_bin_edges, coefficients_with_multiple_groups
 ):
     """Test with multiple grouping variables."""
     result = length_binned_weights(
-        specimen_data_multiple_groups, sample_length_bins, coefficients_with_multiple_groups
+        specimen_data_multiple_groups, sample_length_bin_edges, coefficients_with_multiple_groups
     )
 
     assert isinstance(result, pd.DataFrame)
@@ -443,12 +477,14 @@ def test_length_binned_weights_multiple_groups(
 
 @pytest.mark.skip(reason="This test is outdated for xarray migration.")
 def test_length_binned_weights_preserves_original_data(
-    sample_specimen_data, sample_length_bins, single_regression_coefficients
+    sample_specimen_data, sample_length_bin_edges, single_regression_coefficients
 ):
     """Test that original data is not modified."""
     original_data = sample_specimen_data.copy()
 
-    length_binned_weights(sample_specimen_data, sample_length_bins, single_regression_coefficients)
+    length_binned_weights(
+        sample_specimen_data, sample_length_bin_edges, single_regression_coefficients
+    )
 
     # Original data should be unchanged (function makes copy)
     pd.testing.assert_frame_equal(sample_specimen_data, original_data)
@@ -456,27 +492,29 @@ def test_length_binned_weights_preserves_original_data(
 
 @pytest.mark.skip(reason="This test is outdated for xarray migration.")
 def test_length_binned_weights_deterministic_results(
-    sample_specimen_data, sample_length_bins, single_regression_coefficients
+    sample_specimen_data, sample_length_bin_edges, single_regression_coefficients
 ):
     """Test that function produces deterministic results."""
     result1 = length_binned_weights(
-        sample_specimen_data, sample_length_bins, single_regression_coefficients
+        sample_specimen_data, sample_length_bin_edges, single_regression_coefficients
     )
 
     result2 = length_binned_weights(
-        sample_specimen_data, sample_length_bins, single_regression_coefficients
+        sample_specimen_data, sample_length_bin_edges, single_regression_coefficients
     )
 
     pd.testing.assert_frame_equal(result1, result2)
 
 
 @pytest.mark.skip(reason="This test is outdated for xarray migration.")
-def test_length_binned_weights_realistic_coefficients(sample_specimen_data, sample_length_bins):
+def test_length_binned_weights_realistic_coefficients(
+    sample_specimen_data, sample_length_bin_edges
+):
     """Test with realistic regression coefficients."""
     # Generate coefficients from actual data
     coeffs = fit_length_weight_regression(sample_specimen_data)
 
-    result = length_binned_weights(sample_specimen_data, sample_length_bins, coeffs)
+    result = length_binned_weights(sample_specimen_data, sample_length_bin_edges, coeffs)
 
     assert isinstance(result, pd.DataFrame)
     # Should return long format with additional columns when no grouping
@@ -487,11 +525,11 @@ def test_length_binned_weights_realistic_coefficients(sample_specimen_data, samp
 
 @pytest.mark.skip(reason="This test is outdated for xarray migration.")
 def test_length_binned_weights_column_filtering(
-    sample_specimen_data, sample_length_bins, single_regression_coefficients
+    sample_specimen_data, sample_length_bin_edges, single_regression_coefficients
 ):
     """Test that output contains only expected columns."""
     result = length_binned_weights(
-        sample_specimen_data, sample_length_bins, single_regression_coefficients
+        sample_specimen_data, sample_length_bin_edges, single_regression_coefficients
     )
 
     # Should return long format with additional columns when no grouping
@@ -501,11 +539,11 @@ def test_length_binned_weights_column_filtering(
 
 @pytest.mark.skip(reason="This test is outdated for xarray migration.")
 def test_length_binned_weights_weight_values_reasonable(
-    sample_specimen_data, sample_length_bins, single_regression_coefficients
+    sample_specimen_data, sample_length_bin_edges, single_regression_coefficients
 ):
     """Test that fitted weight values are reasonable."""
     result = length_binned_weights(
-        sample_specimen_data, sample_length_bins, single_regression_coefficients
+        sample_specimen_data, sample_length_bin_edges, single_regression_coefficients
     )
 
     # Weight values should be positive and finite
@@ -515,14 +553,14 @@ def test_length_binned_weights_weight_values_reasonable(
 
 @pytest.mark.skip(reason="This test is outdated for xarray migration.")
 def test_length_binned_weights_integration_with_fit_regression(
-    sample_specimen_data, sample_length_bins
+    sample_specimen_data, sample_length_bin_edges
 ):
     """Test integration with fit_length_weight_regression function."""
     # Generate coefficients using the regression function
     coeffs = fit_length_weight_regression(sample_specimen_data)
 
     # Use those coefficients in biology.length_binned_weights
-    result = length_binned_weights(sample_specimen_data, sample_length_bins, coeffs)
+    result = length_binned_weights(sample_specimen_data, sample_length_bin_edges, coeffs)
 
     assert isinstance(result, pd.DataFrame)
     assert len(result) > 0
@@ -533,12 +571,12 @@ def test_length_binned_weights_integration_with_fit_regression(
 
 @pytest.mark.skip(reason="This test is outdated for xarray migration.")
 def test_length_binned_weights_different_imputation_strategies(
-    uneven_specimen_data, sample_length_bins, single_regression_coefficients
+    uneven_specimen_data, sample_length_bin_edges, single_regression_coefficients
 ):
     """Test different imputation strategies produce different results."""
     result_impute = length_binned_weights(
         uneven_specimen_data,
-        sample_length_bins,
+        sample_length_bin_edges,
         single_regression_coefficients,
         impute_bins=True,
         minimum_count_threshold=3,
@@ -546,7 +584,7 @@ def test_length_binned_weights_different_imputation_strategies(
 
     result_no_impute = length_binned_weights(
         uneven_specimen_data,
-        sample_length_bins,
+        sample_length_bin_edges,
         single_regression_coefficients,
         impute_bins=False,
     )

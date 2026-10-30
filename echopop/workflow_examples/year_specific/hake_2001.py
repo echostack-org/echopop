@@ -144,6 +144,7 @@ ISOBATH_SHEET = "Smoothing_EasyKrig"
 ####################################################################################################
 import logging
 import numpy as np
+import pandas as pd
 import xarray as xr
 from lmfit import Parameters
 from echopop.utils import feat_functions as feat
@@ -454,27 +455,24 @@ df_mesh = ingestion.join_geostrata_by_latitude(
 )
 logging.info("Strata application complete!")
 # ==================================================================================================
-# BINIFY DATA 
+# BIN DATA USING EXPLICIT EDGES
 logging.info(
     "Binning biodata ['dict_df_bio'] into discrete age and length bins\n"
-    "     Age bins: [1, 2, 3, ..., 20, 21, 22]\n"
-    "     Length bins: [2.0, 4.0, 6.0, ... 76.0, 78.0, 80.0]\n"
+    "     Age bin edges: [0.5, 1.5, ..., 21.5, 22.5]\n"
+    "     Length bin edges: [1.0, 3.0, ..., 79.0, 81.0]\n"
     "     New columns:\n"
     "         Age: 'age_bin'\n"
     "         Length: 'length_bin'"
 )
 
 # AGE-BINS
-AGE_BINS = np.linspace(start=1., stop=22, num=22)
-utils.binify(
-    data=dict_df_bio, bins=AGE_BINS, bin_column="age",
-)
+AGE_BIN_EDGES = np.arange(0.5, 23.0, 1.0)
+dict_df_bio["specimen"]["age_bin"] = pd.cut(dict_df_bio["specimen"]["age"], bins=AGE_BIN_EDGES)
 
 # LENGTH-BINS
-LENGTH_BINS = np.linspace(start=2., stop=80., num=40)
-utils.binify(
-    data=dict_df_bio, bins=LENGTH_BINS, bin_column="length", 
-)
+LENGTH_BIN_EDGES = np.arange(1.0, 82.0, 2.0)
+for dataset in ("specimen", "length"):
+    dict_df_bio[dataset]["length_bin"] = pd.cut(dict_df_bio[dataset]["length"], bins=LENGTH_BIN_EDGES)
 logging.info("Age and length binning complete!")
 # ==================================================================================================
 # FIT LENGTH-WEIGHT REGRESSION
@@ -506,7 +504,7 @@ logging.info(
 # SEX-SPECIFIC
 da_binned_weights_sex = biology.length_binned_weights(
     data=dict_df_bio["specimen"],
-    length_bins=LENGTH_BINS,
+    length_bin_edges=LENGTH_BIN_EDGES,
     regression_coefficients=dict_length_weight_coefs["sex"],
     impute_bins=True,
     minimum_count_threshold=5
@@ -515,7 +513,7 @@ da_binned_weights_sex = biology.length_binned_weights(
 # ALL FISH
 da_binned_weights_all = biology.length_binned_weights(
     data=dict_df_bio["specimen"].assign(sex="all"),
-    length_bins=LENGTH_BINS,
+    length_bin_edges=LENGTH_BIN_EDGES,
     regression_coefficients=dict_length_weight_coefs["all"],
     impute_bins=True,
     minimum_count_threshold=5,
