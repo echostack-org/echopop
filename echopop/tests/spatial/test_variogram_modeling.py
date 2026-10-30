@@ -662,8 +662,6 @@ def test_polynomial_composites_at_zero_crossing_and_long_lags(model, decay_power
         np.testing.assert_allclose(result, [0.1, 0.8, 0.8], rtol=1e-13, atol=1e-14)
 
 
-
-
 def test_spherical_is_continuous_at_total_sill():
     """The finite-range plateau includes the nugget exactly once."""
     lags = np.array([[0.0, 0.5, 1.0], [np.nextafter(2.0, 0.0), 2.0, 3.0]])
