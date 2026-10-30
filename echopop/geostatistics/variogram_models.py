@@ -375,8 +375,8 @@ def kbessel(distance_lags: np.ndarray, sill: float, nugget: float, hole_effect_r
         Total variance (nugget + partial sill).
     nugget : float
         Nugget effect representing measurement error and micro-scale variation.
-    correlation_range : float
-        Effective range parameter controlling spatial correlation decay.
+    hole_effect_range : float
+        Correlation length in the same units as the lag distances.
 
     Returns
     -------
@@ -403,7 +403,7 @@ def kbessel(distance_lags: np.ndarray, sill: float, nugget: float, hole_effect_r
 
     - K_ν is the modified Bessel function of the second kind
 
-    - ν is a fixed parameter determined by the specific implementation
+    - ν is fixed at 1
 
     - Γ(ν) is the gamma function
 
@@ -417,7 +417,7 @@ def kbessel(distance_lags: np.ndarray, sill: float, nugget: float, hole_effect_r
 
     # Avoid the case where `hole_effect_range` = 0.0
     if hole_effect_range == 0.0:
-        return np.where(distance_lags == 0.0, 0.0, nugget)
+        return np.where(distance_lags == 0.0, nugget, sill)
 
     # Compute the cyclical term
     cycle = np.where(
@@ -433,7 +433,7 @@ def kbessel(distance_lags: np.ndarray, sill: float, nugget: float, hole_effect_r
         1.0 - (distance_lags / hole_effect_range) * cycle,
     )
 
-    # Compute the J-Bessel semivariogram
+    # Compute the K-Bessel semivariogram
     return partial_sill * decay + nugget
 
 
@@ -688,7 +688,7 @@ def nugget(distance_lags: np.ndarray, sill: float, nugget: float):
     sill : float
         Total variance (equivalent to nugget in this model).
     nugget : float
-        Nugget effect representing measurement error and micro-scale variation.
+        Retained for the common model interface. The total sill determines positive-lag values.
 
     Returns
     -------
@@ -702,14 +702,14 @@ def nugget(distance_lags: np.ndarray, sill: float, nugget: float):
     .. math::
         γ(h) = \\begin{cases}
         0 & \\text{if } h = 0 \\\\
-        C_0 & \\text{if } h > 0
+        C & \\text{if } h > 0
         \\end{cases}
 
     where:
 
     - γ(h) is the variogram at lag distance h
 
-    - C₀ is the nugget effect (total variance)
+    - C is the total sill, entirely attributable to uncorrelated variation
 
     This model represents completely uncorrelated spatial data where:
 
@@ -734,8 +734,8 @@ def nugget(distance_lags: np.ndarray, sill: float, nugget: float):
     .. [1] Cressie, N. (1993). Statistics for Spatial Data. Wiley.
     .. [2] Journel, A.G. & Huijbregts, C.J. (1978). Mining Geostatistics. Academic Press.
     """
-    # Sum together except at lag == 0.0
-    return np.where(distance_lags == 0.0, 0.0, sill + nugget)
+    # All variance is uncorrelated, with a zero semivariance at zero lag.
+    return np.where(distance_lags == 0.0, 0.0, sill)
 
 
 # --- Pentaspherical
@@ -1108,7 +1108,7 @@ def spherical(distance_lags: np.ndarray, sill: float, nugget: float, correlation
     return np.where(
         distance_lags < correlation_range,
         partial_sill * decay + nugget,
-        sill + nugget,
+        sill,
     )
 
 
@@ -1400,7 +1400,7 @@ def bessel_gaussian(
     correlation_range : float
         Range parameter for Gaussian decay component.
     hole_effect_range : float
-        Range parameter controlling Bessel oscillation periodicity.
+        Angular frequency of Bessel oscillations, in inverse lag-distance units.
 
     Returns
     -------
@@ -1413,7 +1413,7 @@ def bessel_gaussian(
 
     .. math::
         γ(h) = C_0 + C_1 \\left(1 - \\exp\\left(-\\frac{h^2}{a_1^2}\\right)
-        \\cdot \\frac{J_1(h/a_2)}{h/(2a_2)}\\right)
+        \\cdot J_0(a_2 h)\\right)
 
     where:
 
@@ -1425,9 +1425,9 @@ def bessel_gaussian(
 
     - a₁ is the correlation range (Gaussian component)
 
-    - a₂ is the hole-effect range (Bessel component)
+    - a₂ is the angular frequency (Bessel component)
 
-    - J₁ is the first-order Bessel function
+    - J₀ is the zeroth-order Bessel function
 
     This model combines smooth Gaussian decay with oscillatory behavior, creating damped periodic
     patterns suitable for highly regular processes with cyclical spatial structures.
@@ -1441,13 +1441,13 @@ def bessel_gaussian(
     partial_sill = sill - nugget
 
     # Calculate the spatial decay term
-    decay = 1.0 - np.exp(-((distance_lags / correlation_range) ** 2))
+    decay = np.exp(-((distance_lags / correlation_range) ** 2))
 
     # Calculate the hole effect
     hole_effect = special.j0(hole_effect_range * distance_lags)
 
     # Compute the composite J-Bessel and Gaussian semivariogram
-    return partial_sill * (decay * hole_effect) + nugget
+    return partial_sill * (1.0 - decay * hole_effect) + nugget
 
 
 # ---- J-Bessel and exponential
@@ -1473,7 +1473,7 @@ def bessel_exponential(
     correlation_range : float
         Range parameter for exponential decay component.
     hole_effect_range : float
-        Range parameter controlling Bessel oscillation periodicity.
+        Angular frequency of Bessel oscillations, in inverse lag-distance units.
     decay_power : float
         Decay exponent for the exponential component (0 < α ≤ 2).
 
@@ -1488,7 +1488,7 @@ def bessel_exponential(
 
     .. math::
         γ(h) = C_0 + C_1 \\left(1 - \\exp\\left(-\\left(\\frac{h}{a_1}\\right)^α\\right)
-               \\cdot \\frac{J_1(h/a_2)}{h/(2a_2)}\\right)
+               \\cdot J_0(a_2 h)\\right)
 
     where:
 
@@ -1500,11 +1500,11 @@ def bessel_exponential(
 
     - a₁ is the correlation range (exponential component)
 
-    - a₂ is the hole-effect range (Bessel component)
+    - a₂ is the angular frequency (Bessel component)
 
     - α is the decay power
 
-    - J₁ is the first-order Bessel function
+    - J₀ is the zeroth-order Bessel function
 
     This model captures both oscillatory patterns and long-range decay, suitable for processes with
     periodic structures that diminish with distance.
@@ -1522,14 +1522,10 @@ def bessel_exponential(
     # Calculate the partial sill (or the sill minus the nugget)
     partial_sill = sill - nugget
 
-    # Calculate the spatial decay term
-    decay = 1.0 - np.exp(-((distance_lags / correlation_range) ** decay_power))
-
-    # Calculate the hole effect
+    # Combine the powered-exponential and Bessel correlations before converting to semivariance.
+    decay = np.exp(-((distance_lags / correlation_range) ** decay_power))
     hole_effect = special.j0(hole_effect_range * distance_lags)
-
-    # Compute the composite J-Bessel and exponential semivariogram
-    return partial_sill * (decay * hole_effect) + nugget
+    return partial_sill * (1.0 - decay * hole_effect) + nugget
 
 
 # ---- cosine and exponential
@@ -1639,7 +1635,7 @@ def cosine_gaussian(
     correlation_range : float
         Range parameter for Gaussian decay component.
     hole_effect_range : float
-        Range parameter controlling cosine oscillation wavelength.
+        Angular frequency of cosine oscillations, in inverse lag-distance units.
 
     Returns
     -------
@@ -1652,7 +1648,7 @@ def cosine_gaussian(
 
     .. math::
         γ(h) = C_0 + C_1 \\left(1 - \\exp\\left(-\\frac{h^2}{a_1^2}\\right)
-               \\cdot \\cos\\left(\\frac{\\pi h}{a_2}\\right)\\right)
+               \\cdot \\cos(a_2 h)\\right)
 
     where:
 
@@ -1664,7 +1660,7 @@ def cosine_gaussian(
 
     - a₁ is the correlation range (Gaussian component)
 
-    - a₂ is the hole-effect range (cosine wavelength)
+    - a₂ is the angular frequency (cosine component)
 
     This model combines:
 
@@ -1693,7 +1689,7 @@ def cosine_gaussian(
     hole_effect = np.cos(hole_effect_range * distance_lags)
 
     # Compute the composite cosine and Gaussian semivariogram
-    return partial_sill * (decay * hole_effect) + nugget
+    return partial_sill * (1.0 - decay * hole_effect) + nugget
 
 
 # ---- exponential and linear
@@ -1706,20 +1702,20 @@ def exponential_linear(
     decay_power: float,
 ):
     r"""
-    Composite exponential-linear variogram model with bounded and unbounded components.
+    Composite exponential-linear variogram model with decay and polynomial modulation.
 
     Parameters
     ----------
     distance_lags : np.ndarray
         Array of spatial lag distances.
     sill : float
-        Total variance for the exponential component.
+        Total variance (nugget + partial sill).
     nugget : float
         Nugget effect representing measurement error and micro-scale variation.
     correlation_range : float
         Range parameter for exponential decay component.
     hole_effect_range : float
-        Range parameter for linear component.
+        Polynomial coefficient in inverse lag-distance units raised to decay_power.
     decay_power : float
         Decay exponent for the exponential component (0 < α ≤ 2).
 
@@ -1733,8 +1729,8 @@ def exponential_linear(
     The exponential-linear composite model is defined as:
 
     .. math::
-        γ(h) = C_0 + C_1 \\left(1 - \\exp\\left(-\\left(\\frac{h}{a_1}\\right)^α\\right)\\right)
-               + C_2 \\cdot \\frac{h}{a_2}
+        γ(h) = C_0 + C_1 \\left(1 - \\exp\\left(-\\left(\\frac{h}{a_1}\\right)^α\\right)
+               \\left(1 - a_2 h^α\\right)\\right)
 
     where:
 
@@ -1746,17 +1742,15 @@ def exponential_linear(
 
     - a₁ is the correlation range (exponential component)
 
-    - a₂ is the hole-effect range (linear component)
+    - a₂ is the polynomial coefficient
 
     - α is the decay power
 
-    - C₂ is determined by model implementation
-
     **Decay power interpretations:**
 
-    - α = 1.0: Linear exponential decay with linear trend
+    - α = 1.0: Linear exponential decay with linear modulation
 
-    - α = 2.0: Gaussian decay with linear trend
+    - α = 2.0: Gaussian decay with quadratic modulation
 
     - α ∈ (0,2): Intermediate decay behaviors
 
@@ -1769,13 +1763,13 @@ def exponential_linear(
     partial_sill = sill - nugget
 
     # Calculate the spatial decay term
-    decay = 1.0 - np.exp(-((distance_lags / correlation_range) ** decay_power))
+    decay = np.exp(-((distance_lags / correlation_range) ** decay_power))
 
     # Calculate the hole effect
     hole_effect = 1.0 - hole_effect_range * distance_lags**decay_power
 
     # Compute the composite exponential and linear semivariogram
-    return partial_sill * (decay * hole_effect) + nugget
+    return partial_sill * (1.0 - decay * hole_effect) + nugget
 
 
 # ---- Gaussian and linear
@@ -1787,20 +1781,20 @@ def gaussian_linear(
     hole_effect_range: float,
 ):
     r"""
-    Composite Gaussian-linear variogram model with smooth bounded and unbounded components.
+    Composite Gaussian-linear variogram model with smooth decay and quadratic modulation.
 
     Parameters
     ----------
     distance_lags : np.ndarray
         Array of spatial lag distances.
     sill : float
-        Total variance for the Gaussian component.
+        Total variance (nugget + partial sill).
     nugget : float
         Nugget effect representing measurement error and micro-scale variation.
     correlation_range : float
         Range parameter for Gaussian decay component.
     hole_effect_range : float
-        Range parameter for linear component.
+        Polynomial coefficient in inverse squared lag-distance units.
 
     Returns
     -------
@@ -1812,8 +1806,8 @@ def gaussian_linear(
     The Gaussian-linear composite model is defined as:
 
     .. math::
-        γ(h) = C_0 + C_1 \\left(1 - \\exp\\left(-\\frac{h^2}{a_1^2}\\right)\\right)
-               + C_2 \\cdot \\frac{h}{a_2}
+        γ(h) = C_0 + C_1 \\left(1 - \\exp\\left(-\\frac{h^2}{a_1^2}\\right)
+               \\left(1 - a_2 h^2\\right)\\right)
 
     where:
 
@@ -1825,12 +1819,10 @@ def gaussian_linear(
 
     - a₁ is the correlation range (Gaussian component)
 
-    - a₂ is the hole-effect range (linear component)
+    - a₂ is the polynomial coefficient
 
-    - C₂ is determined by model implementation
-
-    This model combines smooth Gaussian decay with linear trend components for highly regular
-    spatial processes with regional drift.
+    This model combines smooth Gaussian decay with quadratic modulation for spatial processes
+    with hole effects.
 
     References
     ----------
@@ -1841,13 +1833,13 @@ def gaussian_linear(
     partial_sill = sill - nugget
 
     # Calculate the spatial decay term
-    decay = 1.0 - np.exp(-((distance_lags / correlation_range) ** 2))
+    decay = np.exp(-((distance_lags / correlation_range) ** 2))
 
     # Calculate the hole effect
     hole_effect = 1.0 - hole_effect_range * distance_lags**2
 
     # Compute the composite Gaussian and linear semivariogram
-    return partial_sill * (decay * hole_effect) + nugget
+    return partial_sill * (1.0 - decay * hole_effect) + nugget
 
 
 # Variogram function API

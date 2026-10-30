@@ -93,11 +93,11 @@ The J-Bessel model introduces damped oscillations into the semivariogram, which 
 ### K-Bessel
 
 $$
-\gamma(h) = C_0 + C_1 \left( 1 - \text{K}_\nu\left(\frac{h}{a}\right) \right)
+\gamma(h) = C_0 + C_1 \left[1 - \frac{h}{b}\text{K}_1\left(\frac{h}{b}\right)\right]
 \label{eq:kbessel}
 $$
 
-The K-Bessel model uses the modified Bessel function of the second kind, $\text{K}_\nu$, to describe spatial correlation decay. Unlike the Matérn model, it does not include normalization or scaling factors and is used for specialized geostatistical applications where the decay is governed by the Bessel function itself. {cite:p}`chiles_geostatistics_2012`
+Here, $b$ is a correlation length in the same units as $h$, unlike the frequency parameter used by the oscillatory Bessel models. The normalized correlation $(h/b)\text{K}_1(h/b)$ approaches one at the origin and zero at large lags. The function returns $C_0$ at zero lag. For $b=0$, its limiting value is $C$ at every positive lag. {cite:p}`chiles_geostatistics_2012`
 
 ---
 
@@ -160,7 +160,7 @@ The logarithmic semivariogram model increases slowly with distance and does not 
 ### Matérn
 
 $$
-\gamma(h) = C_0 + C_1 \left( 1 - \frac{2^{1-\nu}}{\Gamma(\nu)} \left( \frac{h}{a} \right)^\nu \text{K}_\nu\left( \frac{h}{a} \right) \right)
+\gamma(h) = C_0 + C_1 \left[1 - \frac{2^{1-\nu}}{\Gamma(\nu)} \left(\frac{\sqrt{2\nu}h}{a}\right)^\nu \text{K}_\nu\left(\frac{\sqrt{2\nu}h}{a}\right)\right]
 \label{eq:matern}
 $$
 
@@ -185,12 +185,12 @@ $$
 \gamma(h) =
 \begin{cases}
 0 & h = 0 \\
-C_0 & h > 0
-\label{eq:nugget}
+C & h > 0
 \end{cases}
+\label{eq:nugget}
 $$
 
-The nugget model represents pure measurement error or micro-scale variation that cannot be resolved by the sampling design. It is used to account for abrupt jumps at the origin, often due to instrument noise or unmeasured small-scale processes. {cite:p}`cressie_statistics`
+All variation is uncorrelated, so the semivariance at positive lags equals the total sill $C$. The `nugget` argument does not add another contribution to that total. {cite:p}`cressie_statistics`
 
 ---
 
@@ -258,14 +258,13 @@ The sinc model generates regular oscillatory patterns, which are suitable for mo
 $$
 \gamma(h) =
 \begin{cases}
-0, & h = 0 \\
-C_0 + C_1 \left( 1.5\frac{h}{a} - 0.5\left(\frac{h}{a}\right)^3 \right), & h \leq a \\
-C_0 + C_1, & h > a
+C_0 + C_1 \left[1.5\frac{h}{a} - 0.5\left(\frac{h}{a}\right)^3\right] & 0 \leq h < a \\
+C & h \geq a
 \end{cases}
 \label{eq:spherical}
 $$
 
-Used for spatial processes with a finite correlation range and one of the most commonly used models for semivariogram analyses. Rises linearly near the origin and flattens at the sill. {cite:p}`chiles_geostatistics_2012`
+The curve reaches the total sill continuously at the range $a$. Because $C$ already includes the nugget, the plateau does not add $C_0$ again. The function uses $C_0$ as the model-curve value at zero lag, while the kriging matrix uses a zero diagonal. {cite:p}`chiles_geostatistics_2012`
 
 ---
 
@@ -356,7 +355,7 @@ $$
 \label{eq:besselcosine}
 $$
 
-This variant of the composite exponential-cosine model can either enhance ($1 + \cos(b h)$) or decay ($1 - \cos(b h)$) for oscillatory processes, providing additional flexibility for fitting empirical data with strong periodicity.
+The minus-sign correlation product is valid in one dimension. Its isotropic use in higher dimensions requires restrictions on the frequency and decay length. The legacy plus-sign option (`enhance_semivariance=True`) is not generally a valid semivariogram, even in one dimension. Neither restriction is currently enforced by the parameter validator.
 
 ### Gaussian-Bessel
 
@@ -375,16 +374,25 @@ $$
 $$
 
 
-This model combines smooth Gaussian decay with regular oscillatory patterns, making it suitable for highly regular spatial processes with cyclical components.
+This correlation product is valid in one dimension. Isotropic use in higher dimensions requires checking the chosen parameters. Correct values at zero lag and at the sill do not establish covariance validity in two dimensions.
 
 ### Gaussian-Linear
 
 $$
-\gamma(h) = C_0 + C_1 \left[1- (1- b h) e^{-(h/L)^2}\right]
+\gamma(h) = C_0 + C_1 \left[1- (1- b h^2) e^{-(h/L)^2}\right]
 \label{eq:gaussianlinear}
 $$
 
-The composite Gaussian-linear model merges smooth Gaussian decay with a linear trend, making it suitable for regular spatial processes that also display a regional drift or gradient.
+Despite its historical name, this model multiplies a Gaussian correlation by a quadratic term. The coefficient $b$ has inverse squared-distance units. The curve approaches the sill at large lags and can exceed it where the correlation is negative. For $b\geq0$, validity in two dimensions requires $bL^2\leq1$.
+
+### Generalized Exponential-Linear
+
+$$
+\gamma(h) = C_0 + C_1 \left[1- (1- b h^\alpha) e^{-(h/L)^\alpha}\right]
+\label{eq:exponentiallinear}
+$$
+
+The coefficient $b$ has inverse distance units raised to the power $\alpha$. This is a damped polynomial correlation, without an unbounded linear trend. For $0<\alpha\leq2$ and $b\geq0$, validity in two dimensions requires $bL^\alpha\leq\alpha/2$. The equation reduces to Gaussian-Linear when $\alpha=2$. These joint parameter restrictions are not currently enforced by the parameter validator.
 
 ### Generalized Bessel-Exponential
 
@@ -393,4 +401,4 @@ $$
 \label{eq:genbesselexponential}
 $$
 
-This model generalizes the Bessel-exponential composite by allowing the decay power $\alpha$ to be adjusted, providing additional flexibility for fitting empirical data with complex periodic and decaying behavior.
+The angular frequency $b$ has inverse distance units and $L$ has distance units. For $0<\alpha\leq2$, this correlation product is valid in one or two dimensions. At $b=0$, it reduces to a powered-exponential model, including the exponential and Gaussian models at $\alpha=1$ and $\alpha=2$.
