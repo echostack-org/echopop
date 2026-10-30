@@ -156,9 +156,9 @@ def test_nugget(sample_distance_lags, sample_model_parameters):
     # Check that result at distance 0 equals 0.0 (nugget model behavior)
     assert np.isclose(result[0], 0.0)
 
-    # Check that all non-zero distances equal sill + nugget
+    # Check that all non-zero distances equal the total sill
     non_zero_mask = sample_distance_lags > 0
-    expected_value = sample_model_parameters["sill"] + sample_model_parameters["nugget"]
+    expected_value = sample_model_parameters["sill"]
     assert np.allclose(result[non_zero_mask], expected_value)
 
 
@@ -176,10 +176,8 @@ def test_sinc(sample_distance_lags, sample_model_parameters):
     assert result.shape == sample_distance_lags.shape
     assert result.dtype == np.float64
 
-    # Check that result at distance 0 is within reasonable range (sinc function behavior)
-    # Due to machine epsilon handling, it might not be exactly the nugget
-    assert result[0] >= sample_model_parameters["nugget"]
-    assert result[0] <= sample_model_parameters["sill"] + sample_model_parameters["nugget"]
+    # The normalized sinc has unit correlation at zero distance.
+    assert np.isclose(result[0], sample_model_parameters["nugget"])
 
     # Check that all values are finite
     assert np.all(np.isfinite(result))
@@ -444,10 +442,8 @@ def test_cosine_gaussian(sample_distance_lags, sample_model_parameters):
     assert result.shape == sample_distance_lags.shape
     assert result.dtype == np.float64
 
-    # Check that result at distance 0 is within reasonable range
-    # Due to the cosine function, it might not be exactly the nugget
-    assert result[0] >= 0.0
-    assert result[0] <= sample_model_parameters["sill"] + sample_model_parameters["nugget"]
+    # The cosine-Gaussian correlation equals one at zero distance.
+    assert np.isclose(result[0], sample_model_parameters["nugget"])
 
     # Check that all values are finite
     assert np.all(np.isfinite(result))
@@ -501,6 +497,221 @@ def test_gaussian_linear(sample_distance_lags, sample_model_parameters):
 # ==================================================================================================
 # Test main variogram function
 # ----------------------------
+# Reference values from EchoPro variogrammodel3d(13, h, [0.1, 0.8, 1.3, p, 3.0]).
+# The Gaussian composite is the p=2 specialization (MATLAB model 11).
+@pytest.mark.parametrize(
+    "family, decay_power, expected",
+    [
+        (
+            "exponential",
+            0.5,
+            [
+                0.1,
+                0.28141580625512785,
+                0.60729907553141749,
+                0.87572803795405818,
+                0.7694945458155743,
+                0.7942228163975501,
+                0.80126748310379914,
+            ],
+        ),
+        (
+            "exponential",
+            1.0,
+            [
+                0.1,
+                0.16632930237245239,
+                0.55611479063105818,
+                0.88435007721717018,
+                0.77735834614554533,
+                0.79846103631265564,
+                0.800000013333118,
+            ],
+        ),
+        (
+            "exponential",
+            1.5,
+            [
+                0.1,
+                0.13010708642985813,
+                0.51775239713160859,
+                0.89271650264688163,
+                0.784356959004814,
+                0.79984881450952061,
+                0.8,
+            ],
+        ),
+        (
+            "exponential",
+            2.0,
+            [
+                0.1,
+                0.11969901020642609,
+                0.49098678229666226,
+                0.90073471904652747,
+                0.79011133715354054,
+                0.7999974185997244,
+                0.8,
+            ],
+        ),
+        (
+            "gaussian",
+            2.0,
+            [
+                0.1,
+                0.11969901020642609,
+                0.49098678229666226,
+                0.90073471904652747,
+                0.79011133715354054,
+                0.7999974185997244,
+                0.8,
+            ],
+        ),
+    ],
+)
+def test_bessel_composites_match_matlab_reference(family, decay_power, expected):
+    """Compare nonzero-hole composites with fixed independent MATLAB values."""
+    lags = np.array([0.0, 0.1, 0.5, 1.0, 2.0, 4.0, 20.0, np.nan]).reshape(2, 4)
+    parameters = {
+        "nugget": 0.1,
+        "sill": 0.8,
+        "correlation_range": 1.3,
+        "hole_effect_range": 3.0,
+    }
+    if family == "exponential":
+        direct = bessel_exponential(lags, decay_power=decay_power, **parameters)
+    else:
+        direct = bessel_gaussian(lags, **parameters)
+    dispatched = compute_variogram(
+        lags, model=["bessel", family], decay_power=decay_power, **parameters
+    )
+    reference = np.array([*expected, np.nan]).reshape(2, 4)
+    for result in (direct, dispatched):
+        assert result.shape == lags.shape
+        np.testing.assert_allclose(result, reference, rtol=1e-13, atol=1e-14, equal_nan=True)
+
+
+@pytest.mark.parametrize(
+    "model",
+    [
+        ["bessel", "exponential"],
+        ["bessel", "gaussian"],
+        ["cosine", "gaussian"],
+        ["exponential", "linear"],
+        ["gaussian", "linear"],
+    ],
+)
+def test_composites_without_hole_effect_reduce_to_decay_model(model):
+    """Removing the modulation preserves the nugget, unit-lag value, and sill."""
+    lags = np.array([[0.0, 1.0], [1e4, np.nan]])
+    result = compute_variogram(
+        lags,
+        model=model,
+        nugget=0.1,
+        sill=0.8,
+        correlation_range=1.0,
+        hole_effect_range=0.0,
+        decay_power=1.5,
+    )
+    # At h=L, every decay exponent gives exp(-1).
+    expected = np.array([[0.1, 0.5424843911799904], [0.8, np.nan]])
+    np.testing.assert_allclose(result, expected, rtol=1e-13, atol=1e-14, equal_nan=True)
+
+
+def test_cosine_gaussian_at_known_phases():
+    """A vanishing cosine gives the sill and a negative cosine gives an overshoot."""
+    lags = np.array([[0.0, np.pi / 2.0], [np.pi, 100.0]])
+    parameters = {"nugget": 0.1, "sill": 0.8, "correlation_range": 1.0, "hole_effect_range": 1.0}
+    expected = np.array([[0.1, 0.8], [0.8 + 0.7 * np.exp(-np.pi**2), 0.8]])
+    direct = cosine_gaussian(lags, **parameters)
+    dispatched = compute_variogram(lags, model=["cosine", "gaussian"], **parameters)
+    for result in (direct, dispatched):
+        np.testing.assert_allclose(result, expected, rtol=1e-13, atol=1e-14)
+
+
+@pytest.mark.parametrize(
+    "model, decay_power",
+    [
+        (["exponential", "linear"], 0.5),
+        (["exponential", "linear"], 1.0),
+        (["exponential", "linear"], 1.5),
+        (["exponential", "linear"], 2.0),
+        (["gaussian", "linear"], 2.0),
+    ],
+)
+def test_polynomial_composites_at_zero_crossing_and_long_lags(model, decay_power):
+    """The polynomial zero eliminates covariance and long lags approach the sill."""
+    # With L=1, b=p/4 satisfies the two-dimensional restriction b*L**p <= p/2.
+    hole_effect = decay_power / 4.0
+    zero_crossing = hole_effect ** (-1.0 / decay_power)
+    lags = np.array([0.0, zero_crossing, 100.0 ** (1.0 / decay_power)])
+    parameters = {
+        "nugget": 0.1,
+        "sill": 0.8,
+        "correlation_range": 1.0,
+        "hole_effect_range": hole_effect,
+    }
+    if model[0] == "exponential":
+        direct = exponential_linear(lags, decay_power=decay_power, **parameters)
+    else:
+        direct = gaussian_linear(lags, **parameters)
+    dispatched = compute_variogram(lags, model=model, decay_power=decay_power, **parameters)
+    for result in (direct, dispatched):
+        np.testing.assert_allclose(result, [0.1, 0.8, 0.8], rtol=1e-13, atol=1e-14)
+
+
+@pytest.mark.parametrize("hole_effect", [0.0, 0.5, 2.0])
+def test_sinc_normalization_and_known_phases(hole_effect):
+    """Normalize sin(b*h) by b*h, including its zero-argument limit."""
+    parameters = {"nugget": 0.1, "sill": 0.8, "hole_effect_range": hole_effect}
+    if hole_effect == 0.0:
+        lags = np.array([[0.0, 0.1], [1.0, 1e4]])
+        expected = np.full_like(lags, 0.1)
+    else:
+        lags = np.array([[0.0, 1e-12], [np.pi / hole_effect, 1.5 * np.pi / hole_effect]])
+        expected = np.array([[0.1, 0.1], [0.8, 0.8 + 1.4 / (3.0 * np.pi)]])
+    direct = sinc(lags, **parameters)
+    dispatched = compute_variogram(lags, model="sinc", **parameters)
+    for result in (direct, dispatched):
+        np.testing.assert_allclose(result, expected, rtol=1e-13, atol=1e-14)
+
+
+def test_spherical_is_continuous_at_total_sill():
+    """The finite-range plateau includes the nugget exactly once."""
+    lags = np.array([[0.0, 0.5, 1.0], [np.nextafter(2.0, 0.0), 2.0, 3.0]])
+    parameters = {"nugget": 0.2, "sill": 1.0, "correlation_range": 2.0}
+    expected = np.array([[0.2, 0.49375, 0.75], [1.0, 1.0, 1.0]])
+    direct = spherical(lags, **parameters)
+    dispatched = compute_variogram(lags, model="spherical", **parameters)
+    for result in (direct, dispatched):
+        np.testing.assert_allclose(result, expected, rtol=1e-13, atol=1e-14)
+
+
+def test_kbessel_zero_range_matches_short_range_limit():
+    """At positive lags a vanishing K-Bessel length scale gives the total sill."""
+    lags = np.array([[0.0, 0.1], [1.0, 100.0]])
+    parameters = {"nugget": 0.2, "sill": 1.0}
+    expected = np.array([[0.2, 1.0], [1.0, 1.0]])
+    for length_scale in (0.0, 1e-8):
+        direct = kbessel(lags, hole_effect_range=length_scale, **parameters)
+        dispatched = compute_variogram(
+            lags, model="kbessel", hole_effect_range=length_scale, **parameters
+        )
+        for result in (direct, dispatched):
+            np.testing.assert_allclose(result, expected, rtol=1e-13, atol=1e-14)
+
+
+def test_pure_nugget_dispatch_uses_total_sill():
+    """A pure nugget has zero self-semivariance and total sill at positive lags."""
+    lags = np.array([[0.0, 0.1], [1.0, 0.0]])
+    parameters = {"nugget": 0.2, "sill": 1.0}
+    expected = np.array([[0.0, 1.0], [1.0, 0.0]])
+    direct = nugget(lags, **parameters)
+    dispatched = compute_variogram(lags, model="nugget", **parameters)
+    for result in (direct, dispatched):
+        np.testing.assert_array_equal(result, expected)
+
+
 def test_variogram_single_model(sample_distance_lags, sample_variogram_arguments):
     """Test variogram function with single model."""
     result = compute_variogram(sample_distance_lags, **sample_variogram_arguments)

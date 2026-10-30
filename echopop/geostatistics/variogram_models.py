@@ -317,7 +317,7 @@ def jbessel(distance_lags: np.ndarray, sill: float, nugget: float, hole_effect_r
     nugget : float
         Nugget effect representing measurement error and micro-scale variation.
     hole_effect_range : float
-        Range parameter controlling the periodicity of oscillations.
+        Angular frequency in inverse lag-distance units.
 
     Returns
     -------
@@ -326,26 +326,13 @@ def jbessel(distance_lags: np.ndarray, sill: float, nugget: float, hole_effect_r
 
     Notes
     -----
-    The J-Bessel variogram model is defined as:
+    The model uses the zeroth-order Bessel function J0 and spatial lag h::
 
-    .. math::
-        γ(h) = C_0 + C_1 \\left(1 - \\frac{J_1(h/a)}{h/(2a)}\\right)
+        gamma(h) = nugget + (sill - nugget) * (1 - J0(hole_effect_range * h))
 
-    where:
-
-    - γ(h) is the variogram at lag distance h
-
-    - C₀ is the nugget effect
-
-    - C₁ is the partial sill (sill - nugget)
-
-    - J₁ is the first-order Bessel function of the first kind
-
-    - a is the hole-effect range parameter
-
-    This model exhibits damped oscillatory behavior, creating "hole effects" where the variogram
-    exceeds the sill before returning. It's suitable for processes with regular spatial patterns or
-    cyclical structures.
+    Its isotropic correlation is valid in one or two dimensions. Negative correlation gives
+    semivariances above the sill. The function returns the nugget at zero lag and approaches
+    the sill at large distances for a positive frequency.
 
     References
     ----------
@@ -364,48 +351,36 @@ def jbessel(distance_lags: np.ndarray, sill: float, nugget: float, hole_effect_r
 
 # ---- K-Bessel
 def kbessel(distance_lags: np.ndarray, sill: float, nugget: float, hole_effect_range: float):
-    r"""
-    K-Bessel variogram model with modified Bessel function of the second kind.
+    """
+    K-Bessel variogram with a first-order modified Bessel correlation.
 
     Parameters
     ----------
     distance_lags : np.ndarray
-        Array of spatial lag distances.
+        Array of nonnegative spatial lag distances.
     sill : float
         Total variance (nugget + partial sill).
     nugget : float
         Nugget effect representing measurement error and micro-scale variation.
-    correlation_range : float
-        Effective range parameter controlling spatial correlation decay.
+    hole_effect_range : float
+        Nonnegative correlation length in the same units as the lag distances. Zero gives the
+        zero-length limit, with the sill at every positive lag.
 
     Returns
     -------
     np.ndarray
-        Variogram values at specified lag distances.
+        Semivariances in the same units as the sill and nugget.
 
     Notes
     -----
-    The K-Bessel variogram model is defined as:
+    The dimensionless distance x is the spatial lag divided by hole_effect_range. The model uses
+    the first-order modified Bessel function K1::
 
-    .. math::
-        γ(h) = C_0 + C_1 \\left(1 - \\frac{2^{1-ν}}{Γ(ν)}
-               \\left(\\frac{h}{a}\\right)^ν K_ν\\left(\\frac{h}{a}\\right)\\right)
+        gamma(h) = nugget + (sill - nugget) * (1 - x * K1(x))
 
-    where:
-
-    - γ(h) is the variogram at lag distance h
-
-    - C₀ is the nugget effect
-
-    - C₁ is the partial sill (sill - nugget)
-
-    - a is the correlation range parameter
-
-    - K_ν is the modified Bessel function of the second kind
-
-    - ν is a fixed parameter determined by the specific implementation
-
-    - Γ(ν) is the gamma function
+    The correlation x*K1(x) tends to one at the origin and zero at large distances. The function
+    returns the nugget at zero lag, including the zero-length limit. Unlike oscillatory models,
+    hole_effect_range is a length rather than a frequency in this model.
 
     References
     ----------
@@ -417,7 +392,7 @@ def kbessel(distance_lags: np.ndarray, sill: float, nugget: float, hole_effect_r
 
     # Avoid the case where `hole_effect_range` = 0.0
     if hole_effect_range == 0.0:
-        return np.where(distance_lags == 0.0, 0.0, nugget)
+        return np.where(distance_lags == 0.0, nugget, sill)
 
     # Compute the cyclical term
     cycle = np.where(
@@ -433,7 +408,7 @@ def kbessel(distance_lags: np.ndarray, sill: float, nugget: float, hole_effect_r
         1.0 - (distance_lags / hole_effect_range) * cycle,
     )
 
-    # Compute the J-Bessel semivariogram
+    # Compute the K-Bessel semivariogram
     return partial_sill * decay + nugget
 
 
@@ -617,37 +592,16 @@ def matern(distance_lags, sill, nugget, correlation_range, smoothness_parameter)
 
     Notes
     -----
-    The Matérn variogram model is defined as:
+    The smoothness parameter nu and spatial lag h enter the dimensionless Bessel argument x::
 
-    .. math::
-        γ(h) = C_0 + C_1 \\left(1 - \\frac{2^{1-ν}}{Γ(ν)}
-               \\left(\\frac{h}{a}\\right)^ν K_ν\\left(\\frac{h}{a}\\right)\\right)
+        x = sqrt(2 * nu) * h / correlation_range
+        gamma(h) = nugget + (sill - nugget) * (
+            1 - 2**(1 - nu) / Gamma(nu) * x**nu * K_nu(x)
+        )
 
-    where:
-
-    - γ(h) is the variogram at lag distance h
-
-    - C₀ is the nugget effect
-
-    - C₁ is the partial sill (sill - nugget)
-
-    - a is the correlation range parameter
-
-    - ν is the smoothness parameter
-
-    - K_ν is the modified Bessel function of the second kind
-
-    - Γ(ν) is the gamma function
-
-    **Common smoothness parameter interpretations:**
-
-    - ν = 0.5: Exponential variogram (non-differentiable)
-
-    - ν = 1.5: Once differentiable random fields
-
-    - ν = 2.5: Twice differentiable random fields
-
-    - ν → ∞: Approaches Gaussian variogram (infinitely differentiable)
+    K_nu is the modified Bessel function of the second kind and Gamma is the gamma function.
+    The normalized correlation has limit one at x=0. The model reduces to the exponential
+    variogram at nu=0.5. Increasing nu produces smoother random fields.
 
     References
     ----------
@@ -678,64 +632,36 @@ def matern(distance_lags, sill, nugget, correlation_range, smoothness_parameter)
 
 # ---- Nugget
 def nugget(distance_lags: np.ndarray, sill: float, nugget: float):
-    r"""
-    Pure nugget variogram model representing uncorrelated spatial noise.
+    """
+    Pure nugget variogram representing uncorrelated spatial variation.
 
     Parameters
     ----------
     distance_lags : np.ndarray
-        Array of spatial lag distances.
+        Array of nonnegative spatial lag distances.
     sill : float
-        Total variance (equivalent to nugget in this model).
+        Total variance and the semivariance at every positive lag.
     nugget : float
-        Nugget effect representing measurement error and micro-scale variation.
+        Accepted for consistency with the common model interface. The sill already includes all
+        nugget variation and determines the plateau.
 
     Returns
     -------
     np.ndarray
-        Variogram values at specified lag distances.
+        Zero at zero lag and the total sill at every positive lag.
 
     Notes
     -----
-    The pure nugget variogram model is defined as:
-
-    .. math::
-        γ(h) = \\begin{cases}
-        0 & \\text{if } h = 0 \\\\
-        C_0 & \\text{if } h > 0
-        \\end{cases}
-
-    where:
-
-    - γ(h) is the variogram at lag distance h
-
-    - C₀ is the nugget effect (total variance)
-
-    This model represents completely uncorrelated spatial data where:
-
-    - No spatial correlation exists beyond measurement locations
-
-    - All variance is attributed to measurement error or micro-scale variation
-
-    - The spatial process appears as white noise
-
-    The pure nugget model is useful for:
-
-    - Modeling measurement error components
-
-    - Representing spatially uncorrelated residuals
-
-    - Baseline comparison for other variogram models
-
-    - Data with extremely short correlation ranges
+    All variation is uncorrelated, so the semivariance equals the total variance at positive
+    lags. Adding the nugget to the total sill would count that contribution twice.
 
     References
     ----------
     .. [1] Cressie, N. (1993). Statistics for Spatial Data. Wiley.
     .. [2] Journel, A.G. & Huijbregts, C.J. (1978). Mining Geostatistics. Academic Press.
     """
-    # Sum together except at lag == 0.0
-    return np.where(distance_lags == 0.0, 0.0, sill + nugget)
+    # All variance is uncorrelated, with a zero semivariance at zero lag.
+    return np.where(distance_lags == 0.0, 0.0, sill)
 
 
 # --- Pentaspherical
@@ -858,7 +784,7 @@ def power(distance_lags: np.ndarray, sill: float, nugget: float, power_exponent:
     distance_lags : np.ndarray
         Array of spatial lag distances.
     sill : float
-        Not used in power law model (set to 0 or ignore).
+        Positive scaling coefficient for the power law, rather than a finite plateau.
     nugget : float
         Nugget effect representing measurement error and micro-scale variation.
     power_exponent : float
@@ -871,32 +797,14 @@ def power(distance_lags: np.ndarray, sill: float, nugget: float, power_exponent:
 
     Notes
     -----
-    The power law variogram model is defined as:
+    For spatial lag h, the model evaluates::
 
-    .. math::
-        γ(h) = C_0 + C_1 \\cdot h^β
+        gamma(h) = nugget + sill * h**power_exponent
 
-    where:
-
-    - γ(h) is the variogram at lag distance h
-
-    - C₀ is the nugget effect
-
-    - C₁ is the scaling coefficient
-
-    - β is the power exponent (0 < β < 2)
-
-    **Power exponent interpretations:**
-
-    - β = 1: Linear variogram
-
-    - β → 0: Approaches nugget effect only
-
-    - β → 2: Approaches parabolic behavior (Brownian motion)
-
-    This model represents unbounded, self-similar (fractal) spatial processes
-    without a finite sill. It's commonly used for modeling phenomena with
-    scale-invariant properties.
+    The sill argument acts as a scaling coefficient, with units of semivariance divided by
+    lag-distance units raised to power_exponent. This model is unbounded and has no finite sill.
+    Exponent one gives a linear variogram, including the increment variance of Brownian motion.
+    Exponent two gives quadratic growth. The model is valid for exponents in (0, 2].
 
     References
     ----------
@@ -980,68 +888,46 @@ def quadratic(
 
 # ---- Sinc
 def sinc(distance_lags: np.ndarray, sill: float, nugget: float, hole_effect_range: float):
-    r"""
-    Sinc (cardinal sine) variogram model exhibiting oscillatory hole-effect behavior.
+    """
+    Evaluate the normalized sinc variogram with oscillatory hole-effect behavior.
 
     Parameters
     ----------
     distance_lags : np.ndarray
-        Array of spatial lag distances.
+        Array of nonnegative spatial lag distances.
     sill : float
         Total variance (nugget + partial sill).
     nugget : float
         Nugget effect representing measurement error and micro-scale variation.
     hole_effect_range : float
-        Range parameter controlling the wavelength of oscillations.
+        Angular frequency in inverse lag-distance units. Zero disables spatial variation.
 
     Returns
     -------
     np.ndarray
-        Variogram values at specified lag distances.
+        Semivariances in the same units as the sill and nugget.
 
     Notes
     -----
-    The sinc variogram model is defined as:
+    The spatial lag h enters the normalized correlation sin(b*h)/(b*h), where b is the
+    hole-effect frequency. The correlation equals one when its argument is zero::
 
-    .. math::
-        γ(h) = C_0 + C_1 \\left(1 - \\frac{\\sin(\\pi h/a)}{\\pi h/a}\\right)
+        gamma(h) = nugget + (sill - nugget) * (1 - sin(b*h)/(b*h))
 
-    where:
-
-    - γ(h) is the variogram at lag distance h
-
-    - C₀ is the nugget effect
-
-    - C₁ is the partial sill (sill - nugget)
-
-    - a is the hole-effect range parameter
-
-    - The limit as h→0 gives sinc(0) = 1
-
-    The sinc function creates regular oscillatory patterns with:
-    - First zero crossing at h = a
-    - Subsequent zeros at integer multiples of a
-    - Damped oscillations that decay as 1/h
-
-    This model is suitable for processes with:
-    - Regular periodic structures
-    - Wave-like spatial patterns
-    - Alternating zones of positive and negative correlation
-    - Spectral characteristics in spatial data
+    This gives the nugget at zero lag and at every lag when b is zero. For positive b, the first
+    zero of the correlation occurs at h = pi/b and the semivariance there equals the sill.
+    The model is valid for isotropic fields in one, two, or three dimensions.
 
     References
     ----------
     .. [1] Chilès, J.P. & Delfiner, P. (2012). Geostatistics: Modeling Spatial Uncertainty. Wiley.
     .. [2] Wackernagel, H. (2003). Multivariate Geostatistics. Springer.
     """
-    # Get machine epsilon
-    eps = np.finfo(float).eps
-
     # Calculate the partial sill (or the sill minus the nugget)
     partial_sill = sill - nugget
 
     # Calculate the spatial decay term
-    decay = 1.0 - np.sin(hole_effect_range * (distance_lags + eps)) / (distance_lags + eps)
+    decay = 1.0 - np.sinc(hole_effect_range * distance_lags / np.pi)
 
     # Compute the sinc semivariogram
     return partial_sill * decay + nugget
@@ -1108,7 +994,7 @@ def spherical(distance_lags: np.ndarray, sill: float, nugget: float, correlation
     return np.where(
         distance_lags < correlation_range,
         partial_sill * decay + nugget,
-        sill + nugget,
+        sill,
     )
 
 
@@ -1386,51 +1272,39 @@ def bessel_gaussian(
     correlation_range: float,
     hole_effect_range: float,
 ):
-    r"""
-    Composite Bessel-Gaussian variogram model combining periodic and smooth decay.
+    """
+    Composite Bessel-Gaussian variogram with damped oscillatory correlation.
 
     Parameters
     ----------
     distance_lags : np.ndarray
-        Array of spatial lag distances.
+        Array of nonnegative spatial lag distances.
     sill : float
         Total variance (nugget + partial sill).
     nugget : float
         Nugget effect representing measurement error and micro-scale variation.
     correlation_range : float
-        Range parameter for Gaussian decay component.
+        Positive Gaussian decay length, in the same units as the lag distances.
     hole_effect_range : float
-        Range parameter controlling Bessel oscillation periodicity.
+        Bessel angular frequency in inverse lag-distance units. Zero disables the oscillations.
 
     Returns
     -------
     np.ndarray
-        Variogram values at specified lag distances.
+        Semivariances in the same units as the sill and nugget.
 
     Notes
     -----
-    The Bessel-Gaussian composite model is defined as:
+    The model uses the zeroth-order Bessel function J0::
 
-    .. math::
-        γ(h) = C_0 + C_1 \\left(1 - \\exp\\left(-\\frac{h^2}{a_1^2}\\right)
-        \\cdot \\frac{J_1(h/a_2)}{h/(2a_2)}\\right)
+        gamma(h) = nugget + (sill - nugget) * (
+            1 - exp(-(h / correlation_range)**2) * J0(hole_effect_range * h)
+        )
 
-    where:
-
-    - γ(h) is the variogram at lag distance h
-
-    - C₀ is the nugget effect
-
-    - C₁ is the partial sill (sill - nugget)
-
-    - a₁ is the correlation range (Gaussian component)
-
-    - a₂ is the hole-effect range (Bessel component)
-
-    - J₁ is the first-order Bessel function
-
-    This model combines smooth Gaussian decay with oscillatory behavior, creating damped periodic
-    patterns suitable for highly regular processes with cyclical spatial structures.
+    The spatial lag h uses the same length units as correlation_range. This correlation product
+    is valid for isotropic fields in one or two dimensions. The function returns the nugget at
+    zero lag and approaches the sill at large distances. Zero hole-effect frequency reduces it
+    to the Gaussian model.
 
     References
     ----------
@@ -1441,13 +1315,13 @@ def bessel_gaussian(
     partial_sill = sill - nugget
 
     # Calculate the spatial decay term
-    decay = 1.0 - np.exp(-((distance_lags / correlation_range) ** 2))
+    decay = np.exp(-((distance_lags / correlation_range) ** 2))
 
     # Calculate the hole effect
     hole_effect = special.j0(hole_effect_range * distance_lags)
 
     # Compute the composite J-Bessel and Gaussian semivariogram
-    return partial_sill * (decay * hole_effect) + nugget
+    return partial_sill * (1.0 - decay * hole_effect) + nugget
 
 
 # ---- J-Bessel and exponential
@@ -1459,60 +1333,44 @@ def bessel_exponential(
     decay_power: float,
     hole_effect_range: float,
 ):
-    r"""
-    Composite Bessel-exponential variogram model combining periodic and decay behavior.
+    """
+    Composite Bessel-exponential variogram with damped oscillatory correlation.
 
     Parameters
     ----------
     distance_lags : np.ndarray
-        Array of spatial lag distances.
-    sill : float
-        Total variance (nugget + partial sill).
+        Array of nonnegative spatial lag distances.
     nugget : float
         Nugget effect representing measurement error and micro-scale variation.
+    sill : float
+        Total variance (nugget + partial sill), at least as large as the nugget.
     correlation_range : float
-        Range parameter for exponential decay component.
-    hole_effect_range : float
-        Range parameter controlling Bessel oscillation periodicity.
+        Positive length scale for exponential decay, in the same units as the lag distances.
     decay_power : float
-        Decay exponent for the exponential component (0 < α ≤ 2).
+        Dimensionless decay exponent, greater than zero and at most two.
+    hole_effect_range : float
+        Bessel angular frequency in inverse lag-distance units. Zero disables the oscillations.
 
     Returns
     -------
     np.ndarray
-        Variogram values at specified lag distances.
+        Semivariances in the same units as the sill and nugget.
 
     Notes
     -----
-    The Bessel-exponential composite model combines periodic and exponential decay:
+    The model combines powered-exponential and zeroth-order Bessel correlations::
 
-    .. math::
-        γ(h) = C_0 + C_1 \\left(1 - \\exp\\left(-\\left(\\frac{h}{a_1}\\right)^α\\right)
-               \\cdot \\frac{J_1(h/a_2)}{h/(2a_2)}\\right)
+        gamma(h) = nugget + (sill - nugget) * (
+            1 - exp(-(h / correlation_range)**decay_power) * J0(hole_effect_range * h)
+        )
 
-    where:
+    Here, h is the spatial lag distance and J0 is the Bessel function of the first kind of order
+    zero. The correlation product is valid for isotropic fields in one or two dimensions. The
+    semivariance approaches the sill at large distances and can exceed it where correlation is
+    negative. Following the model convention, the function returns the nugget at zero lag.
 
-    - γ(h) is the variogram at lag distance h
-
-    - C₀ is the nugget effect
-
-    - C₁ is the partial sill (sill - nugget)
-
-    - a₁ is the correlation range (exponential component)
-
-    - a₂ is the hole-effect range (Bessel component)
-
-    - α is the decay power
-
-    - J₁ is the first-order Bessel function
-
-    This model captures both oscillatory patterns and long-range decay, suitable for processes with
-    periodic structures that diminish with distance.
-
-    **Decay power interpretations:**
-    - α = 1.0: Linear exponential decay with Bessel oscillations
-    - α = 2.0: Gaussian decay with Bessel oscillations
-    - α ∈ (0,2): Intermediate decay behaviors
+    With zero hole-effect frequency, decay powers of one and two reduce to the exponential and
+    Gaussian models, respectively.
 
     References
     ----------
@@ -1522,14 +1380,10 @@ def bessel_exponential(
     # Calculate the partial sill (or the sill minus the nugget)
     partial_sill = sill - nugget
 
-    # Calculate the spatial decay term
-    decay = 1.0 - np.exp(-((distance_lags / correlation_range) ** decay_power))
-
-    # Calculate the hole effect
+    # Combine the powered-exponential and Bessel correlations before converting to semivariance.
+    decay = np.exp(-((distance_lags / correlation_range) ** decay_power))
     hole_effect = special.j0(hole_effect_range * distance_lags)
-
-    # Compute the composite J-Bessel and exponential semivariogram
-    return partial_sill * (decay * hole_effect) + nugget
+    return partial_sill * (1.0 - decay * hole_effect) + nugget
 
 
 # ---- cosine and exponential
@@ -1541,62 +1395,42 @@ def cosine_exponential(
     hole_effect_range: float,
     enhance_semivariance: bool,
 ):
-    r"""
-    Composite cosine-exponential variogram model with trigonometric modulation.
+    """
+    Evaluate the cosine-exponential model with the selected correlation sign.
 
     Parameters
     ----------
     distance_lags : np.ndarray
-        Array of spatial lag distances.
+        Array of nonnegative spatial lag distances.
     sill : float
         Total variance (nugget + partial sill).
     nugget : float
         Nugget effect representing measurement error and micro-scale variation.
     correlation_range : float
-        Range parameter for exponential decay component.
+        Positive exponential decay length, in the same units as the lag distances.
     hole_effect_range : float
-        Range parameter controlling cosine oscillation wavelength.
-    decay_power : float
-        Decay exponent for the exponential component (0 < α ≤ 2).
+        Cosine angular frequency in inverse lag-distance units.
+    enhance_semivariance : bool
+        If False, subtract the damped correlation from one. If True, add it instead, retaining
+        the legacy enhanced curve.
 
     Returns
     -------
     np.ndarray
-        Variogram values at specified lag distances.
+        Model values in the same units as the sill and nugget.
 
     Notes
     -----
-    The cosine-exponential composite model is defined as:
+    With enhance_semivariance=False and spatial lag h, the model evaluates::
 
-    .. math::
-        γ(h) = C_0 + C_1 \\left(1 - \\exp\\left(-\\left(\\frac{h}{a_1}\\right)^α\\right)
-               \\cdot \\cos\\left(\\frac{\\pi h}{a_2}\\right)\\right)
+        gamma(h) = nugget + (sill - nugget) * (
+            1 - exp(-h / correlation_range) * cos(hole_effect_range * h)
+        )
 
-    where:
-
-    - γ(h) is the variogram at lag distance h
-
-    - C₀ is the nugget effect
-
-    - C₁ is the partial sill (sill - nugget)
-
-    - a₁ is the correlation range (exponential component)
-
-    - a₂ is the hole-effect range (cosine wavelength)
-
-    - α is the decay power
-
-    This model creates sinusoidal modulation of exponential decay, producing regular oscillatory
-    patterns. The cosine component creates predictable periodicity, making it suitable for
-    processes with known cyclical behavior.
-
-    **Decay power interpretations:**
-
-    - α = 1.0: Linear exponential decay with cosine modulation
-
-    - α = 2.0: Gaussian decay with cosine modulation
-
-    - α ∈ (0,2): Intermediate decay behaviors
+    This correlation product is valid in one dimension. Isotropic use in higher dimensions
+    requires checking the chosen parameters. The enhanced form uses a plus sign and is not
+    generally a valid semivariogram, even in one dimension. These restrictions are not enforced
+    by this function.
 
     References
     ----------
@@ -1625,58 +1459,39 @@ def cosine_gaussian(
     correlation_range: float,
     hole_effect_range: float,
 ):
-    r"""
-    Composite cosine-Gaussian variogram model with trigonometric modulation and smooth decay.
+    """
+    Composite cosine-Gaussian variogram with damped oscillatory correlation.
 
     Parameters
     ----------
     distance_lags : np.ndarray
-        Array of spatial lag distances.
+        Array of nonnegative spatial lag distances.
     sill : float
         Total variance (nugget + partial sill).
     nugget : float
         Nugget effect representing measurement error and micro-scale variation.
     correlation_range : float
-        Range parameter for Gaussian decay component.
+        Positive Gaussian decay length, in the same units as the lag distances.
     hole_effect_range : float
-        Range parameter controlling cosine oscillation wavelength.
+        Cosine angular frequency in inverse lag-distance units. Zero disables the oscillations.
 
     Returns
     -------
     np.ndarray
-        Variogram values at specified lag distances.
+        Semivariances in the same units as the sill and nugget.
 
     Notes
     -----
-    The cosine-Gaussian composite model is defined as:
+    For spatial lag h, the model evaluates::
 
-    .. math::
-        γ(h) = C_0 + C_1 \\left(1 - \\exp\\left(-\\frac{h^2}{a_1^2}\\right)
-               \\cdot \\cos\\left(\\frac{\\pi h}{a_2}\\right)\\right)
+        gamma(h) = nugget + (sill - nugget) * (
+            1 - exp(-(h / correlation_range)**2) * cos(hole_effect_range * h)
+        )
 
-    where:
-
-    - γ(h) is the variogram at lag distance h
-
-    - C₀ is the nugget effect
-
-    - C₁ is the partial sill (sill - nugget)
-
-    - a₁ is the correlation range (Gaussian component)
-
-    - a₂ is the hole-effect range (cosine wavelength)
-
-    This model combines:
-
-    - **Gaussian smoothness**: Infinitely differentiable correlation structure
-
-    - **Cosine periodicity**: Regular oscillatory patterns
-
-    - **Smooth transitions**: Gradual approach to the sill
-
-    The Gaussian component provides very smooth spatial correlation while the cosine component
-    introduces predictable periodic behavior. This combination is ideal for highly regular spatial
-    processes with known cyclical patterns.
+    It returns the nugget at zero lag and approaches the sill at large distances. The correlation
+    product is valid in one dimension. Its isotropic use in higher dimensions requires checking
+    the covariance validity for the chosen parameters. This function does not enforce those
+    restrictions. Zero hole-effect frequency reduces it to the Gaussian model.
 
     References
     ----------
@@ -1693,7 +1508,7 @@ def cosine_gaussian(
     hole_effect = np.cos(hole_effect_range * distance_lags)
 
     # Compute the composite cosine and Gaussian semivariogram
-    return partial_sill * (decay * hole_effect) + nugget
+    return partial_sill * (1.0 - decay * hole_effect) + nugget
 
 
 # ---- exponential and linear
@@ -1705,60 +1520,45 @@ def exponential_linear(
     hole_effect_range: float,
     decay_power: float,
 ):
-    r"""
-    Composite exponential-linear variogram model with bounded and unbounded components.
+    """
+    Damped polynomial hole-effect variogram with powered-exponential decay.
 
     Parameters
     ----------
     distance_lags : np.ndarray
-        Array of spatial lag distances.
+        Array of nonnegative spatial lag distances.
     sill : float
-        Total variance for the exponential component.
+        Total variance (nugget + partial sill).
     nugget : float
         Nugget effect representing measurement error and micro-scale variation.
     correlation_range : float
-        Range parameter for exponential decay component.
+        Positive decay length, in the same units as the lag distances.
     hole_effect_range : float
-        Range parameter for linear component.
+        Nonnegative polynomial coefficient in inverse lag-distance units raised to decay_power.
     decay_power : float
-        Decay exponent for the exponential component (0 < α ≤ 2).
+        Dimensionless decay exponent, greater than zero and at most two.
 
     Returns
     -------
     np.ndarray
-        Variogram values at specified lag distances.
+        Semivariances in the same units as the sill and nugget.
 
     Notes
     -----
-    The exponential-linear composite model is defined as:
+    For spatial lag h, the model evaluates::
 
-    .. math::
-        γ(h) = C_0 + C_1 \\left(1 - \\exp\\left(-\\left(\\frac{h}{a_1}\\right)^α\\right)\\right)
-               + C_2 \\cdot \\frac{h}{a_2}
+        gamma(h) = nugget + (sill - nugget) * (
+            1 - exp(-(h / correlation_range)**decay_power)
+            * (1 - hole_effect_range * h**decay_power)
+        )
 
-    where:
+    The model returns the nugget at zero lag and approaches the sill at large distances. The
+    polynomial modifies a decaying correlation, so it does not introduce an unbounded linear
+    trend. Zero hole-effect coefficient removes the polynomial term.
 
-    - γ(h) is the variogram at lag distance h
-
-    - C₀ is the nugget effect
-
-    - C₁ is the partial sill (exponential component)
-
-    - a₁ is the correlation range (exponential component)
-
-    - a₂ is the hole-effect range (linear component)
-
-    - α is the decay power
-
-    - C₂ is determined by model implementation
-
-    **Decay power interpretations:**
-
-    - α = 1.0: Linear exponential decay with linear trend
-
-    - α = 2.0: Gaussian decay with linear trend
-
-    - α ∈ (0,2): Intermediate decay behaviors
+    For a nonnegative hole-effect coefficient and decay powers in (0, 2], the correlation is
+    valid in two dimensions when hole_effect_range * correlation_range**decay_power is at most
+    decay_power / 2. This restriction is not enforced by this function.
 
     References
     ----------
@@ -1769,13 +1569,13 @@ def exponential_linear(
     partial_sill = sill - nugget
 
     # Calculate the spatial decay term
-    decay = 1.0 - np.exp(-((distance_lags / correlation_range) ** decay_power))
+    decay = np.exp(-((distance_lags / correlation_range) ** decay_power))
 
     # Calculate the hole effect
     hole_effect = 1.0 - hole_effect_range * distance_lags**decay_power
 
     # Compute the composite exponential and linear semivariogram
-    return partial_sill * (decay * hole_effect) + nugget
+    return partial_sill * (1.0 - decay * hole_effect) + nugget
 
 
 # ---- Gaussian and linear
@@ -1786,51 +1586,42 @@ def gaussian_linear(
     correlation_range: float,
     hole_effect_range: float,
 ):
-    r"""
-    Composite Gaussian-linear variogram model with smooth bounded and unbounded components.
+    """
+    Damped polynomial hole-effect variogram with Gaussian decay.
 
     Parameters
     ----------
     distance_lags : np.ndarray
-        Array of spatial lag distances.
+        Array of nonnegative spatial lag distances.
     sill : float
-        Total variance for the Gaussian component.
+        Total variance (nugget + partial sill).
     nugget : float
         Nugget effect representing measurement error and micro-scale variation.
     correlation_range : float
-        Range parameter for Gaussian decay component.
+        Positive decay length, in the same units as the lag distances.
     hole_effect_range : float
-        Range parameter for linear component.
+        Nonnegative polynomial coefficient in inverse lag-distance units raised to 2.
 
     Returns
     -------
     np.ndarray
-        Variogram values at specified lag distances.
+        Semivariances in the same units as the sill and nugget.
 
     Notes
     -----
-    The Gaussian-linear composite model is defined as:
+    For spatial lag h, the model evaluates::
 
-    .. math::
-        γ(h) = C_0 + C_1 \\left(1 - \\exp\\left(-\\frac{h^2}{a_1^2}\\right)\\right)
-               + C_2 \\cdot \\frac{h}{a_2}
+        gamma(h) = nugget + (sill - nugget) * (
+            1 - exp(-(h / correlation_range)**2) * (1 - hole_effect_range * h**2)
+        )
 
-    where:
+    The model returns the nugget at zero lag and approaches the sill at large distances. The
+    polynomial modifies a decaying correlation, so it does not introduce an unbounded linear
+    trend. Zero hole-effect coefficient removes the polynomial term.
 
-    - γ(h) is the variogram at lag distance h
-
-    - C₀ is the nugget effect
-
-    - C₁ is the partial sill (Gaussian component)
-
-    - a₁ is the correlation range (Gaussian component)
-
-    - a₂ is the hole-effect range (linear component)
-
-    - C₂ is determined by model implementation
-
-    This model combines smooth Gaussian decay with linear trend components for highly regular
-    spatial processes with regional drift.
+    For a nonnegative hole-effect coefficient, the correlation is valid in two dimensions when
+    hole_effect_range * correlation_range**2 is at most one. This restriction is not enforced
+    by this function.
 
     References
     ----------
@@ -1841,13 +1632,13 @@ def gaussian_linear(
     partial_sill = sill - nugget
 
     # Calculate the spatial decay term
-    decay = 1.0 - np.exp(-((distance_lags / correlation_range) ** 2))
+    decay = np.exp(-((distance_lags / correlation_range) ** 2))
 
     # Calculate the hole effect
     hole_effect = 1.0 - hole_effect_range * distance_lags**2
 
     # Compute the composite Gaussian and linear semivariogram
-    return partial_sill * (decay * hole_effect) + nugget
+    return partial_sill * (1.0 - decay * hole_effect) + nugget
 
 
 # Variogram function API
@@ -1897,7 +1688,8 @@ def compute_variogram(
         below table associated with the argument ``model``). Alternatively, these parameters can be
         entered directly and are contained within ``kwargs``. Possible parameters include:
 
-        - ``sill`` (Sill): The asymptotic value as lags approach infinity.
+        - ``sill`` (Sill): Total variance for bounded models. For unbounded models, see the
+          individual model description for its scaling convention.
 
         - ``nugget`` (Nugget): The semivariogram y-intercept that corresponds to variability
           at lag distances shorter than the lag resolution.
@@ -1905,17 +1697,16 @@ def compute_variogram(
         - ``correlation_range`` (Correlation length scale/range): The ascending rate for the
           semivariogram.
 
-        - ``hole_effect_range`` (Hole effect range): The (normalized) length scale/range that
-          'holes' are observed, which represent 'null' (or very small) points compared to their
-          neighboring lags.
+        - ``hole_effect_range`` (Hole effect parameter): Angular frequency for oscillatory
+          models, a correlation length for K-Bessel, or a polynomial coefficient for the
+          exponential-linear and Gaussian-linear models. Units depend on the selected model.
 
         - ``decay_power`` (Decay term exponent): An exponential term that is used in certain
           generalized exponential (or related) semivariogram models that modulates the ascending
           rate for a semivariogram.
 
-        - ``enhance_semivariance`` (Semivariance enhancement): A boolean term that determines
-          whether the correlation decay in certain cosine-related variogram models are enhanced
-          (or not) at further lag distances.
+        - ``enhance_semivariance`` (Semivariance enhancement): Selects the legacy plus-sign
+          cosine-exponential curve when True. See that model for its validity limitations.
 
     model : Optional[Union[str, list]]
         A string or list of model names. A single name represents a single family model. Two inputs
