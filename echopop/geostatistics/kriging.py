@@ -283,8 +283,14 @@ def adaptive_search_radius(
         if isinstance(search_strategy, Callable):
             wr_indices, oos_indices, oos_weights = search_strategy(**search_params)
 
+    # Exclude surplus neighbors once the minimum in-radius count is satisfied.
+    range_grid = local_points[:, :k_max].copy()
+    exclude = (valid_distances >= k_min)[:, None] & (range_grid > search_radius)
+    wr_indices[exclude] = np.nan
+    range_grid[exclude] = np.nan
+
     # Return output
-    return local_points[:, :k_max], wr_indices, oos_indices, oos_weights
+    return range_grid, wr_indices, oos_indices, oos_weights
 
 
 def ordinary_kriging_matrix(
@@ -785,6 +791,9 @@ def ordinary_kriging(
     local_variogram = np.apply_along_axis(
         vgm.compute_variogram, 1, range_grid, variogram_parameters
     )
+
+    # Preserve padding for models that return finite values at NaN lags.
+    local_variogram[np.isnan(range_grid)] = np.nan
 
     # Append 1.0 for the ordinary kriging assumptions (M2)
     local_variogram_M2 = np.sort(
