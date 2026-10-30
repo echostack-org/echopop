@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
+import pytest
 
+from echopop.geostatistics import kriging as kriging_module, variogram_models as vgm
 from echopop.geostatistics.kriging import (
     Kriging,
     adaptive_search_radius,
@@ -121,6 +123,130 @@ def test_adaptive_search_radius_basic():
     # Check that all elements are numpy arrays
     for element in result:
         assert isinstance(element, np.ndarray)
+
+
+@pytest.mark.parametrize("inside_count", [0, 1, 2, 3, 5, 9, 10, 12])
+def test_adaptive_search_radius_retains_expected_neighbors(inside_count):
+    """Retain radius-limited neighbors or the existing minimum-neighbor fallback."""
+    inside = np.linspace(0.2, 1.0 if inside_count >= 3 else 0.8, inside_count)
+    distances = np.r_[inside, np.linspace(1.2, 2.3, 12 - inside_count)]
+    permutation = np.random.default_rng(554).permutation(len(distances))
+    inputs = distances[permutation][None, :]
+
+    ranges, within, outside, weights = adaptive_search_radius(inputs, 3, 10, 1.0)
+
+    within_count = min(inside_count, 10)
+    selected_count = max(3, within_count)
+    expected_within = np.flatnonzero(permutation < within_count)
+    expected_outside = np.flatnonzero(
+        (permutation >= within_count) & (permutation < selected_count)
+    )
+    np.testing.assert_array_equal(np.sort(within[0, ~np.isnan(within[0])]), expected_within)
+    np.testing.assert_array_equal(np.sort(outside[0, ~np.isnan(outside[0])]), expected_outside)
+    assert np.isnan(within).sum() == 10 - within_count
+    assert np.isnan(outside).sum() == 3 - len(expected_outside)
+    assert np.isnan(ranges).sum() == 10 - selected_count
+    np.testing.assert_allclose(ranges[0, :selected_count], distances[:selected_count])
+    if inside_count >= 3:
+        indices = within[0, ~np.isnan(within[0])].astype(int)
+        np.testing.assert_array_equal(ranges[0, :selected_count], inputs[0, indices])
+    expected_weight = np.exp(-distances[:3].mean()) if inside_count == 0 else 1.0
+    np.testing.assert_allclose(weights, [expected_weight])
+
+
+def test_adaptive_search_radius_preserves_sparse_strategy_in_mixed_batch():
+    """Apply radius padding without discarding a sparse-search strategy result."""
+    distances = np.array(
+        [
+            [0.2, 0.6, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4, 2.6],
+            [0.1, 0.3, 0.5, 0.7, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0],
+        ]
+    )
+    snapshots = []
+
+    def strategy(**kwargs):
+        np.testing.assert_array_equal(kwargs["sparse_radii"], [0])
+        within, outside, weights = uniform_search_strategy(**kwargs)
+        weights[0] = 0.37
+        snapshots.append(tuple(array.copy() for array in (within, outside, weights)))
+        return within, outside, weights
+
+    ranges, within, outside, weights = adaptive_search_radius(
+        distances, 3, 10, 1.0, search_strategy=strategy
+    )
+
+    assert len(snapshots) == 1
+    for actual, expected in zip((within, outside, weights), snapshots[0], strict=True):
+        np.testing.assert_array_equal(actual[0], expected[0])
+    np.testing.assert_array_equal(ranges[0], np.r_[distances[0, :3], np.full(7, np.nan)])
+    np.testing.assert_array_equal(within[1], np.r_[np.arange(5), np.full(5, np.nan)])
+    np.testing.assert_array_equal(ranges[1], np.r_[distances[1, :5], np.full(5, np.nan)])
+    assert np.isnan(outside[1]).all()
+    assert weights[1] == 1.0
+
+
+@pytest.mark.parametrize("inside_count", [3, 5, 9])
+@pytest.mark.parametrize(
+    "model",
+    ["exponential", "spherical", ["bessel", "exponential"]],
+    ids=["exponential", "spherical", "bessel-exponential"],
+)
+def test_ordinary_kriging_matches_reduced_neighborhood(inside_count, model, monkeypatch):
+    """Match an independent solve using only the actual in-radius observations."""
+    rng = np.random.default_rng(554)
+    radii = np.r_[np.linspace(0.15, 0.95, inside_count), np.linspace(1.15, 2.1, 12 - inside_count)]
+    angles = rng.uniform(0.0, 2.0 * np.pi, len(radii))
+    coordinates = radii[:, None] * np.column_stack((np.cos(angles), np.sin(angles)))
+    values = np.array([4.0, 19.0, 2.0, 17.0, 12.0, 3.0, 25.0, 7.0, 11.0, 31.0, 6.0, 22.0])
+    permutation = rng.permutation(len(radii))
+    transects = pd.DataFrame(coordinates[permutation], columns=["x", "y"])
+    transects["biomass_density"] = values[permutation]
+    mesh = pd.DataFrame({"x": [0.0], "y": [0.0]})
+    variogram_parameters = {
+        "model": model,
+        "sill": 0.8,
+        "nugget": 0.0,
+        "correlation_range": 0.7,
+        "decay_power": 1.5,
+        "hole_effect_range": 0.0,
+    }
+
+    # Build the reference directly, without adaptive search or packed arrays.
+    selected = transects.loc[np.hypot(transects["x"], transects["y"]) <= 1.0]
+    xy = selected[["x", "y"]].to_numpy()
+    pairwise = np.linalg.norm(xy[:, None, :] - xy[None, :, :], axis=2)
+    matrix = np.ones((inside_count + 1, inside_count + 1))
+    matrix[:-1, :-1] = vgm.compute_variogram(pairwise, variogram_parameters)
+    np.fill_diagonal(matrix, 0.0)
+    rhs = np.r_[vgm.compute_variogram(np.linalg.norm(xy, axis=1), variogram_parameters), 1.0]
+    reference_weights = np.linalg.solve(matrix, rhs)
+    estimate = reference_weights[:-1] @ selected["biomass_density"].to_numpy()
+    variance = reference_weights @ rhs
+    cv = np.sqrt(variance * selected["biomass_density"].var(ddof=1)) / abs(estimate)
+
+    solve_weights = kriging_module.kriging_lambda
+    solver_sizes = []
+
+    def checked_solver(aspect_ratio, lagged_semivariogram, kriging_covariance_matrix):
+        assert np.isfinite(lagged_semivariogram).all()
+        assert np.isfinite(kriging_covariance_matrix).all()
+        assert lagged_semivariogram.shape == (inside_count + 1,)
+        assert kriging_covariance_matrix.shape == (inside_count + 1, inside_count + 1)
+        solver_sizes.append(len(lagged_semivariogram))
+        return solve_weights(aspect_ratio, lagged_semivariogram, kriging_covariance_matrix)
+
+    monkeypatch.setattr(kriging_module, "kriging_lambda", checked_solver)
+    result = ordinary_kriging(
+        transects,
+        mesh,
+        ("x", "y"),
+        "biomass_density",
+        {"k_min": 3, "k_max": 10, "search_radius": 1.0, "aspect_ratio": 1e-12},
+        variogram_parameters,
+    )
+
+    assert solver_sizes == [inside_count + 1]
+    np.testing.assert_allclose(result[0], [estimate, variance, cv], rtol=1e-10, atol=1e-12)
 
 
 def test_adaptive_search_radius_with_strategy(
