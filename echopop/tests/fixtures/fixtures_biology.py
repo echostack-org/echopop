@@ -147,9 +147,9 @@ def sample_length_distribution():
 
 
 @pytest.fixture
-def sample_length_bins():
-    """Create sample length bins array."""
-    return np.array([10, 15, 20, 25, 30])
+def sample_length_bin_edges():
+    """Create explicit edges for length bins centered on 10, 15, ..., 30."""
+    return np.array([7.5, 12.5, 17.5, 22.5, 27.5, 32.5])
 
 
 @pytest.fixture

@@ -4,7 +4,6 @@ import pytest
 import xarray as xr
 from scipy import interpolate as interp
 
-from echopop import utils
 from echopop.survey import proportions as get_proportions
 
 
@@ -670,11 +669,11 @@ def test_get_nasc_proportions_slice():
     )
 
     # Apply binning like the real workflow does
-    age_bins = np.linspace(start=1.0, stop=3.0, num=3)
-    length_bins = np.linspace(start=15.0, stop=30.0, num=4)
+    age_bins = np.arange(0.5, 4.0, 1.0)
+    length_bins = np.arange(12.5, 35.0, 5.0)
 
-    utils.binify(raw_data, bins=age_bins, bin_column="age")
-    utils.binify(raw_data, bins=length_bins, bin_column="length")
+    raw_data["age_bin"] = pd.cut(raw_data["age"], bins=age_bins)
+    raw_data["length_bin"] = pd.cut(raw_data["length"], bins=length_bins)
 
     # Convert to proportions
     data_cnv = raw_data.set_index(["length_bin", "age_bin", "stratum_num", "sex"])[
@@ -766,12 +765,12 @@ def test_get_number_proportions_slice():
         }
     )
 
-    # Apply proper binning using utils.binify
-    length_bins = np.linspace(10, 30, 3)  # [10, 20, 30]
-    age_bins = np.linspace(1, 3, 3)  # [1, 2, 3]
+    # Apply proper binning using pandas.cut
+    length_bins = np.arange(5.0, 36.0, 10.0)  # Edges for centers 10, 20, 30
+    age_bins = np.arange(0.5, 4.0, 1.0)  # Edges for integer ages 1, 2, 3
 
-    utils.binify(test_data, bins=length_bins, bin_column="length")
-    utils.binify(test_data, bins=age_bins, bin_column="age")
+    test_data["length_bin"] = pd.cut(test_data["length"], bins=length_bins)
+    test_data["age_bin"] = pd.cut(test_data["age"], bins=age_bins)
 
     # Convert to proportions
     data_cnv = test_data.set_index(["length_bin", "age_bin", "stratum_num", "sex"])[
@@ -844,7 +843,7 @@ def test_get_number_proportions_slice():
 @pytest.mark.skip()
 def test_get_weight_proportions_slice():
     """Test weight proportions without thresholding."""
-    # Create test data and apply proper binning using utils.binify
+    # Create test data and apply proper binning using pandas.cut
     raw_data = pd.DataFrame(
         {
             "length": [15.0, 25.0, 15.0, 25.0, 18.0, 28.0],
@@ -864,11 +863,11 @@ def test_get_weight_proportions_slice():
         }
     )
 
-    # Apply binning using utils.binify (like the real workflow)
-    length_bins = np.linspace(10, 30, 3)  # Creates (10, 20], (20, 30]
-    age_bins = np.linspace(1.0, 3.0, 3)  # Creates (0.5, 1.5], (1.5, 2.5]
-    utils.binify(raw_data, bins=length_bins, bin_column="length")
-    utils.binify(raw_data, bins=age_bins, bin_column="age")
+    # Apply binning using pandas.cut (like the real workflow)
+    length_bins = np.arange(5.0, 36.0, 10.0)  # Creates (5, 15], (15, 25], (25, 35]
+    age_bins = np.arange(0.5, 4.0, 1.0)  # Creates (0.5, 1.5], (1.5, 2.5]
+    raw_data["length_bin"] = pd.cut(raw_data["length"], bins=length_bins)
+    raw_data["age_bin"] = pd.cut(raw_data["age"], bins=age_bins)
 
     # Create weight proportions in the correct format: MultiIndex rows, stratum columns
     weight_data = (
@@ -886,9 +885,9 @@ def test_get_weight_proportions_slice():
     # ---- Convert to DataArray
     weight_cnv = xr.Dataset({"proportion": weight_data.stack().to_xarray().rename("proportion")})
 
-    # Apply binning using utils.binify (like the real workflow)
-    utils.binify(test_data, bins=length_bins, bin_column="length")
-    utils.binify(test_data, bins=age_bins, bin_column="age")
+    # Apply binning using pandas.cut (like the real workflow)
+    test_data["length_bin"] = pd.cut(test_data["length"], bins=length_bins)
+    test_data["age_bin"] = pd.cut(test_data["age"], bins=age_bins)
 
     # Convert to proportions
     data_cnv = test_data.set_index(["length_bin", "age_bin", "stratum_num", "sex"])[
