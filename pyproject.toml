@@ -40,6 +40,8 @@ dependencies = [
     "scipy>=1.15.0",
     "numba>=0.63.0b1",
     "xarray>=2026.01.0",
+    "sqlalchemy",
+    "psycopg[binary]",
     # Spatial data processing stack
     "cartopy>=0.25.0",
     "geopandas>=1.1.0",
