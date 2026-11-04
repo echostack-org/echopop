@@ -105,6 +105,7 @@ ISOBATH_SHEET = "Smoothing_EasyKrig"
 ####################################################################################################
 ####################################################################################################
 import numpy as np
+import pandas as pd
 import xarray as xr
 import echopop.ingest as ingestion
 from echopop import inversion, utils
@@ -203,18 +204,15 @@ df_nasc = ingestion.join_strata_by_uid(
 )
 
 # ==================================================================================================
-# BINIFY DATA 
+# BIN DATA USING EXPLICIT EDGES
 # AGE-BINS
-AGE_BINS = np.linspace(start=1., stop=22, num=22)
-utils.binify(
-    data=dict_df_bio, bins=AGE_BINS, bin_column="age",
-)
+AGE_BIN_EDGES = np.arange(0.5, 23.0, 1.0)
+dict_df_bio["specimen"]["age_bin"] = pd.cut(dict_df_bio["specimen"]["age"], bins=AGE_BIN_EDGES)
 
 # LENGTH-BINS
-LENGTH_BINS = np.linspace(start=2., stop=80., num=40)
-utils.binify(
-    data=dict_df_bio, bins=LENGTH_BINS, bin_column="length", 
-)
+LENGTH_BIN_EDGES = np.arange(1.0, 82.0, 2.0)
+for dataset in ("specimen", "length"):
+    dict_df_bio[dataset]["length_bin"] = pd.cut(dict_df_bio[dataset]["length"], bins=LENGTH_BIN_EDGES)
 # ----> Replace length values
 dict_df_bio["specimen"] = (
     dict_df_bio["specimen"].dropna(subset=["length"])
@@ -245,7 +243,7 @@ dict_length_weight_coefs["sex"] = dict_df_bio["specimen"].groupby(["sex"]).apply
 # SEX-SPECIFIC
 da_binned_weights_sex = biology.length_binned_weights(
     data=dict_df_bio["specimen"],
-    length_bins=LENGTH_BINS,
+    length_bin_edges=LENGTH_BIN_EDGES,
     regression_coefficients=dict_length_weight_coefs["sex"],
     impute_bins=True,
     minimum_count_threshold=5
@@ -254,7 +252,7 @@ da_binned_weights_sex = biology.length_binned_weights(
 # ALL FISH
 da_binned_weights_all = biology.length_binned_weights(
     data=dict_df_bio["specimen"].assign(sex="all"),
-    length_bins=LENGTH_BINS,
+    length_bin_edges=LENGTH_BIN_EDGES,
     regression_coefficients=dict_length_weight_coefs["all"],
     impute_bins=True,
     minimum_count_threshold=5,

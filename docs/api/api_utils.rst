@@ -6,4 +6,3 @@
 Utilities
 =========
 .. autofunction:: echopop.utils.base.apply_filters
-.. autofunction:: echopop.utils.base.binify
