@@ -990,18 +990,18 @@ def transect_mesh_region_2007(
         # transect_lower_bound = [111.1] + [i + 0.6 for i in range(transect_start, transect_end + 1)]
         # # ---- Northern boundary
         # transect_upper_bound = [111.4] + [i + 0.9 for i in range(transect_start, transect_end + 1)]
-        
+
         transect_lower_bound = [i + 0.6 for i in range(transect_start, transect_end + 1)]
         # ---- Northern boundary
         transect_upper_bound = [i + 0.9 for i in range(transect_start, transect_end + 1)]
- 
+
     # Region 3: parallel transects to latitudes west of Haida Gwaii
     else:
         # ---- Southern-most transect
         transect_start = 119
-        #transect_start = 124
+        # transect_start = 124
         # ---- Northern-most transect
-        #transect_end = 119
+        # transect_end = 119
         transect_end = 141
         # ---- Western boundary
         # transect_lower_bound = list(
@@ -1016,7 +1016,7 @@ def transect_mesh_region_2007(
         #     + list(np.concatenate((np.arange(128, 136), np.arange(137, 142))) + 0.4)
         #     + [98.1]
         # )
-        
+
         transect_lower_bound = [i + 0.1 for i in range(transect_start, transect_end + 1)]
         # ---- Eastern boundary
         transect_upper_bound = [i + 0.4 for i in range(transect_start, transect_end + 1)]
@@ -1104,18 +1104,18 @@ def transect_mesh_region_2005(
         # ---- Eastern-most transect
         transect_end = 113
         # ---- Southern boundary
-        #transect_lower_bound = [108.1] + list(np.array([109, 111]) + 0.6) 
+        # transect_lower_bound = [108.1] + list(np.array([109, 111]) + 0.6)
         # ---- Northern boundary
-        #transect_upper_bound = [108.4] + list(np.array([109, 111]) + 0.9)
+        # transect_upper_bound = [108.4] + list(np.array([109, 111]) + 0.9)
         transect_lower_bound = [i + 0.6 for i in range(transect_start, transect_end + 1)]
         # ---- Northern boundary
         transect_upper_bound = [i + 0.9 for i in range(transect_start, transect_end + 1)]
     # Region 3: parallel transects to latitudes west of Haida Gwaii
     else:
         # ---- Southern-most transect
-        transect_start =  113 #123
+        transect_start = 113  # 123
         # ---- Northern-most transect
-        transect_end = 123 #113
+        transect_end = 123  # 113
         # ---- Western boundary
         # transect_lower_bound = list(np.concatenate((np.arange(113, 124, 2), [97])) + 0.1)
         # # ---- Eastern boundary
@@ -1200,7 +1200,7 @@ def transect_mesh_region_2003(
         #         )
         #     )
         #     + 0.4
-        #)
+        # )
         # ---- Western boundary
         transect_lower_bound = [i + 0.1 for i in range(transect_start, transect_end + 1)]
         # ---- Eastern boundary
