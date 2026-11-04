@@ -987,9 +987,9 @@ def transect_mesh_region_2007(
         # ---- Eastern-most transect
         transect_end = 117
         # ---- Southern boundary
-        # transect_lower_bound = [111.1] + [i + 0.6 for i in range(transect_start, transect_end + 1)]
+        # transect_lower_bound = [111.1] + [i + 0.6 for i in range(transect_start, transect_end + 1)]  # noqa
         # # ---- Northern boundary
-        # transect_upper_bound = [111.4] + [i + 0.9 for i in range(transect_start, transect_end + 1)]
+        # transect_upper_bound = [111.4] + [i + 0.9 for i in range(transect_start, transect_end + 1)]  # noqa
 
         transect_lower_bound = [i + 0.6 for i in range(transect_start, transect_end + 1)]
         # ---- Northern boundary
@@ -1187,7 +1187,7 @@ def transect_mesh_region_2003(
         transect_end = 105
         # ---- Western boundary
         # transect_lower_bound = list(
-        #     np.concatenate((np.arange(transect_start, 95), np.arange(117, 120), np.arange(98, 106)))
+        #     np.concatenate((np.arange(transect_start, 95), np.arange(117, 120), np.arange(98, 106)))  # noqa
         #     + 0.1
         # )
         # # ---- Eastern boundary
