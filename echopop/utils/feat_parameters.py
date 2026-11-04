@@ -715,7 +715,7 @@ def transect_mesh_region_2012(
         # ---- Western boundary
         # transect_lower_bound = list(np.array([97, 135, 131, 129, 127, 125, 123, 121, 120]) + 0.1)
         # ---- Eastern boundary
-        # transect_upper_bound = [97.1, 99.1, 133.4, 131.4, 129.4, 128.4, 126.4, 117.6, 117.9, 119.4]
+        # transect_upper_bound = [97.1, 99.1, 133.4, 131.4, 129.4, 128.4, 126.4, 117.6, 117.9, 119.4]  # noqa
         # ---- Western boundary
         transect_lower_bound = [i + 0.1 for i in range(transect_start, transect_end + 1)]
         # ---- Eastern boundary
