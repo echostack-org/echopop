@@ -24,7 +24,6 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering"
@@ -105,7 +104,7 @@ write_to_template = 'version = "{version}"  # noqa'
 # --- Ruff configuration ---
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+target-version = "py313"
 extend-exclude = [
    "echopop/workflow_examples",
     "*.ipynb"
@@ -147,7 +146,7 @@ ignore-words-list = "notin,burnin"
 
 [tool.black]
 line-length = 100
-target-version = ["py312"]
+target-version = ["py313"]
 
 [tool.isort]
 known_first_party = "echopop"
