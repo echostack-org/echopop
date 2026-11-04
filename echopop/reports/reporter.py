@@ -551,7 +551,7 @@ def pivot_aged_weight_proportions(
 
     # Convert the interval indices to numerics
     age_weight_full.index = (
-        pd.Series(age_weight_full.index).apply(lambda x: x.mid).values.to_numpy().astype(int)
+        pd.Series(age_weight_full.index).apply(lambda x: x.mid).to_numpy().astype(int)
     )
 
     # Calculate proportions
@@ -1534,14 +1534,14 @@ class Reporter:
         aged_table.index = (
             pd.Series(aged_table.index, name="length_bin")
             .apply(lambda x: x.mid)
-            .values.to_numpy()
+            .to_numpy()
             .astype(int)
         )
         # ---- Restack sex
         aged_table = aged_table.stack("sex", future_stack=True)
         # ---- Convert the column indices to numerics
         aged_table.columns = (
-            pd.Series(aged_table.columns).apply(lambda x: x.mid).values.to_numpy().astype(int)
+            pd.Series(aged_table.columns).apply(lambda x: x.mid).to_numpy().astype(int)
         )
         # ---- Swap the index levels
         aged_table = aged_table.unstack("sex").swaplevel(axis=1)
@@ -1559,7 +1559,7 @@ class Reporter:
         unaged_table.index = (
             pd.Series(unaged_table.index, name="length_bin")
             .apply(lambda x: x.mid)
-            .values.to_numpy()
+            .to_numpy()
             .astype(int)
         )
 
@@ -1645,14 +1645,14 @@ class Reporter:
         table_cnv.index = (
             pd.Series(table_cnv.index, name="length_bin")
             .apply(lambda x: x.mid)
-            .values.to_numpy()
+            .to_numpy()
             .astype(int)
         )
         # ---- Restack sex
         table_cnv = table_cnv.stack("sex", future_stack=True)
         # ---- Convert the column indices to numerics
         table_cnv.columns = (
-            pd.Series(table_cnv.columns).apply(lambda x: x.mid).values.to_numpy().astype(int)
+            pd.Series(table_cnv.columns).apply(lambda x: x.mid).to_numpy().astype(int)
         )
         # ---- Swap the index levels
         table_cnv = table_cnv.unstack("sex").swaplevel(axis=1)
@@ -2088,14 +2088,14 @@ class Reporter:
         aged_table.index = (
             pd.Series(aged_table.index, name="length_bin")
             .apply(lambda x: x.mid)
-            .values.to_numpy()
+            .to_numpy()
             .astype(int)
         )
         # ---- Restack sex
         aged_table = aged_table.stack("sex", future_stack=True)
         # ---- Convert the column indices to numerics
         aged_table.columns = (
-            pd.Series(aged_table.columns).apply(lambda x: x.mid).values.to_numpy().astype(int)
+            pd.Series(aged_table.columns).apply(lambda x: x.mid).to_numpy().astype(int)
         )
         # ---- Swap the index levels
         aged_table = aged_table.unstack("sex").swaplevel(axis=1)
@@ -2113,7 +2113,7 @@ class Reporter:
         unaged_table.index = (
             pd.Series(unaged_table.index, name="length_bin")
             .apply(lambda x: x.mid)
-            .values.to_numpy()
+            .to_numpy()
             .astype(int)
         )
 
@@ -2199,14 +2199,14 @@ class Reporter:
         aged_table.index = (
             pd.Series(aged_table.index, name="length_bin")
             .apply(lambda x: x.mid)
-            .values.to_numpy()
+            .to_numpy()
             .astype(int)
         )
         # ---- Restack sex
         aged_table = aged_table.stack("sex", future_stack=True)
         # ---- Convert the column indices to numerics
         aged_table.columns = (
-            pd.Series(aged_table.columns).apply(lambda x: x.mid).values.to_numpy().astype(int)
+            pd.Series(aged_table.columns).apply(lambda x: x.mid).to_numpy().astype(int)
         )
         # ---- Swap the index levels
         aged_table = aged_table.unstack("sex").swaplevel(axis=1)
