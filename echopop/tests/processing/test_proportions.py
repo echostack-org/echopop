@@ -448,7 +448,7 @@ def test_weight_proportions_basic(weight_distr_dict, catch_data_df):
     """Test basic functionality of weight proportions calculation."""
     # Call the function
     result = get_proportions.weight_proportions(
-        weight_data=weight_distr_dict["aged"],
+        weight_data=xr.Dataset(weight_distr_dict),
         catch_data={
             "catch": catch_data_df,
             "length": pd.DataFrame(
@@ -485,7 +485,7 @@ def test_fitted_weight_proportions(
     """Test basic functionality of standardized weight proportions."""
     # Tabulate weight proportions
     weight_props = get_proportions.weight_proportions(
-        weight_data=weight_distr_dict["aged"],
+        weight_data=xr.Dataset(weight_distr_dict),
         catch_data={
             "catch": catch_data_df,
             "length": pd.DataFrame(

@@ -823,11 +823,13 @@ def aggregate_stratum_weights(input_data, stratum_col="stratum_num"):
 
 
 def weight_proportions(
-    weight_data: xr.DataArray,
+    weight_data: xr.Dataset,
     catch_data: pd.DataFrame | dict[str, pd.DataFrame],
     stratum_dim: str | None = None,
     proportion_reference: Literal["catch", "catch_plus_specimen"] = "catch",
-) -> xr.DataArray:
+    *,
+    net_selectivity: bool = False,
+) -> xr.Dataset:
     """
     Calculate stratified weight proportions using xarray and pandas inputs.
 
@@ -838,9 +840,14 @@ def weight_proportions(
 
     Parameters
     ----------
-    weight_data : xr.DataArray
-        xarray DataArray containing weight distributions for all groups, with
-        dimensions including stratum_dim.
+    weight_data : xr.Dataset
+        Summed weights by length and other grouping dimensions. Requires "aged"
+        and "unaged". For selectivity-expanded data, also supply "aged_observed"
+        and "unaged_observed" when net_selectivity=True. The corrected catch
+        denominator: expanded aged + (catch - observed aged) *
+        (expanded unaged / observed unaged), summed within each stratum.
+        With net_selectivity=False, use the original denominator regardless of
+        whether observed arrays are present.
     catch_data : pd.DataFrame
         DataFrame with catch data, including columns for stratum_dim and "weight".
     stratum_dim : str, optional
@@ -853,16 +860,21 @@ def weight_proportions(
         - "catch_plus_specimen": proportions are relative to the sum of catch weights and
           individual fish weights
 
+    net_selectivity : bool, default False
+        Explicitly select the expanded catch denominator. When True, requires
+        "aged_observed" and "unaged_observed" and proportion_reference="catch".
+        When False, observed arrays are unused. Weights must be in kg. If the
+        unaged ratio is invalid and the remaining catch is below 1 kg, use a
+        ratio of 1; otherwise an invalid ratio raises ValueError.
+
     Returns
     -------
-    xr.DataArray
-        DataArray containing the calculated weight proportions, indexed by all grouping dimensions
-        present in the input data.
+    xr.Dataset
+        Dataset containing the aged weight proportions in "proportion",
+        indexed by all grouping dimensions present in the input data.
 
     Notes
     -----
-    - No column or dimension names are hard-coded; all logic is dynamic.
-
     - The function assumes that grouping columns are consistent between weight_data
       and catch_data.
 
@@ -871,7 +883,7 @@ def weight_proportions(
     Examples
     --------
     >>> weight_props = weight_proportions(
-    ...     weight_data=ds_da_weight_dist["aged"],
+    ...     weight_data=ds_da_weight_dist,
     ...     catch_data=dict_df_bio["catch"],
     ...     stratum_dim="stratum_ks",
     ...     proportion_reference="catch"
@@ -879,11 +891,35 @@ def weight_proportions(
     >>> print(weight_props)
     <xarray.DataArray ...>
     """
+    if not isinstance(weight_data, xr.Dataset):
+        raise TypeError("weight_data must be a Dataset of summed aged/unaged weights.")
+    required = {"aged", "unaged"}
+    if net_selectivity:
+        required.update({"aged_observed", "unaged_observed"})
+    missing = required.difference(weight_data.data_vars)
+    if missing:
+        raise ValueError(f"weight_data is missing required variables: {sorted(missing)}")
+    aged_weights = weight_data["aged"]
+    expansion_inputs = (
+        tuple(weight_data[key] for key in ("aged_observed", "unaged", "unaged_observed"))
+        if net_selectivity
+        else ()
+    )
+    if net_selectivity:
+        if proportion_reference != "catch":
+            raise ValueError("Weight expansion requires proportion_reference='catch'.")
+        if stratum_dim is not None and any(
+            stratum_dim not in value.dims for value in (aged_weights, *expansion_inputs)
+        ):
+            raise ValueError("All weight arrays must contain the stratum dimension.")
+
     # Convert stratum_dim to list for internal use
     stratum_dim_list = [stratum_dim] if stratum_dim is not None else []
 
-    # Compute the total weights per stratum from the biological data
-    group_weights = weight_data.sum(dim=[d for d in weight_data.dims if d not in stratum_dim_list])
+    # Compute the total weights per stratum from the aged fish
+    group_weights = aged_weights.sum(
+        dim=[d for d in aged_weights.dims if d not in stratum_dim_list]
+    )
 
     # Conditionally drop specimen-only hauls if required
     if proportion_reference == "catch_plus_specimen":
@@ -922,8 +958,35 @@ def weight_proportions(
             f"are limited to 'catch' (default) and 'catch_plus_specimen'."
         )
 
+    if net_selectivity:
+
+        def stratum_total(data):
+            return data.astype(float).sum(dim=[d for d in data.dims if d not in stratum_dim_list])
+
+        observed_aged, expanded_unaged, observed_unaged = (
+            stratum_total(data).reindex_like(total_weights, fill_value=0.0)
+            for data in expansion_inputs
+        )
+        remaining = total_weights - observed_aged  # observed unaged + tossed
+        if bool((remaining < 0).any()):
+            raise ValueError("Observed aged weight exceeds catch weight.")
+        ratio = (
+            expanded_unaged / observed_unaged
+        )  # expansion ratio that will be used for unaged + tossed
+        invalid_ratio = ~np.isfinite(ratio) | (ratio <= 0)
+        # Weights are in kg. Leave a sub-1 kg remainder unexpanded when the
+        # unaged sample cannot supply a valid expansion ratio.
+        ratio = ratio.where(~(invalid_ratio & (remaining < 1.0)), 1.0)
+        invalid = (remaining >= 1.0) & invalid_ratio
+        if bool(invalid.any()):
+            raise ValueError(
+                "Cannot expand unaged catch weight without a finite positive "
+                "unaged weight expansion ratio in every stratum."
+            )
+        total_weights = group_weights_aligned + remaining * ratio.where(remaining != 0, 1.0)
+
     # Compute the weight proportions for the array
-    arr = weight_data / total_weights
+    arr = aged_weights / total_weights
     # ---- Assign the array name
     arr.name = "proportion"
     return arr.to_dataset()
