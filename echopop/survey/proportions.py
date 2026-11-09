@@ -863,7 +863,9 @@ def weight_proportions(
     net_selectivity : bool, default False
         Explicitly select the expanded catch denominator. When True, requires
         "aged_observed" and "unaged_observed" and proportion_reference="catch".
-        When False, observed arrays are unused.
+        When False, observed arrays are unused. Weights must be in kg. If the
+        unaged ratio is invalid and the remaining catch is below 1 kg, use a
+        ratio of 1; otherwise an invalid ratio raises ValueError.
 
     Returns
     -------
@@ -965,7 +967,11 @@ def weight_proportions(
         if bool((remaining < 0).any()):
             raise ValueError("Observed aged weight exceeds catch weight.")
         ratio = expanded_unaged / observed_unaged  # expansion ratio that will be used for unaged + tossed
-        invalid = (remaining != 0) & (~np.isfinite(ratio) | (ratio <= 0))
+        invalid_ratio = ~np.isfinite(ratio) | (ratio <= 0)
+        # Weights are in kg. Leave a sub-1 kg remainder unexpanded when the
+        # unaged sample cannot supply a valid expansion ratio.
+        ratio = ratio.where(~(invalid_ratio & (remaining < 1.0)), 1.0)
+        invalid = (remaining >= 1.0) & invalid_ratio
         if bool(invalid.any()):
             raise ValueError(
                 "Cannot expand unaged catch weight without a finite positive "

@@ -82,3 +82,22 @@ def test_required_weight_keys(net_selectivity, missing):
     else:
         result = weight_proportions(data, catch, "stratum", net_selectivity=False)
         np.testing.assert_allclose(result["proportion"].sum("sex"), [0.3, 0.3])
+
+
+@pytest.mark.parametrize("remaining", [0., 0.819, 0.999, 1., 1.001])
+@pytest.mark.parametrize("valid_ratio", [False, True])
+def test_small_catch_remainder_ratio_fallback(remaining, valid_ratio):
+    observed_aged = weight([[1., 2.], [1., 2.]])
+    expanded_aged = observed_aged * 2
+    unaged = observed_aged if valid_ratio else observed_aged * 0
+    data = xr.Dataset({"aged": expanded_aged, "aged_observed": observed_aged,
+                       "unaged": unaged * 2, "unaged_observed": unaged})
+    catch = pd.DataFrame({"stratum": [1, 2], "weight": [3. + remaining] * 2})
+    if not valid_ratio and remaining >= 1.:
+        with pytest.raises(ValueError, match="finite positive"):
+            weight_proportions(data, catch, "stratum", net_selectivity=True)
+    else:
+        result = weight_proportions(data, catch, "stratum", net_selectivity=True)
+        ratio = 2. if valid_ratio else 1.
+        np.testing.assert_allclose(result["proportion"].sum("sex"),
+                                   [6. / (6. + remaining * ratio)] * 2)
