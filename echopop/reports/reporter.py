@@ -1771,6 +1771,8 @@ class Reporter:
         filename: str,
         sheetnames: dict[str, str],
         bio_data: dict[str, pd.DataFrame],
+        *,
+        net_selectivity: bool = False,
     ) -> None:
         """
         Create an Excel report of combined specimen and length haul totals.
@@ -1790,6 +1792,11 @@ class Reporter:
             'length_bin', 'haul_num')
             - 'length' : pandas.DataFrame containing length counts (must include 'sex',
             'length_bin', 'haul_num', 'length_count')
+        net_selectivity : bool, default False
+            Sum precomputed specimen 'length_count' values instead of counting nonmissing
+            specimen lengths. Correction must already have been applied upstream, with
+            a count of one for specimens from uncorrected gears. Length data always use
+            the supplied 'length_count' values.
 
         Returns
         -------
@@ -1814,6 +1821,10 @@ class Reporter:
             raise TypeError("'bio_data' must be a `dict`.")
         if "specimen" not in bio_data or "length" not in bio_data:
             raise KeyError("'bio_data' must include 'specimen' and 'length' keys.")
+        if not isinstance(net_selectivity, bool):
+            raise TypeError("'net_selectivity' must be a `bool`.")
+        if net_selectivity and "length_count" not in bio_data["specimen"].columns:
+            raise KeyError("'bio_data' specimen data missing required column: 'length_count'.")
         if not isinstance(filename, str):
             raise TypeError("'filename' must be a `str`.")
         if not isinstance(sheetnames, dict):
@@ -1836,11 +1847,14 @@ class Reporter:
 
         # Create pivot tables
         # ---- Specimen
+        count_column = "length_count" if net_selectivity else "length"
+        count_aggregation = "sum" if net_selectivity else "count"
+        
         spe_pvt = specimen_data_cleaned.pivot_table(
             columns=["sex", "length_bin"],
             index=["haul_num"],
-            values="length",
-            aggfunc="count",
+            values=count_column,
+            aggfunc=count_aggregation,
             observed=False,
         )
         # ---- Length
@@ -1861,8 +1875,8 @@ class Reporter:
         specimen_pvt_all = specimen_data_all.pivot_table(
             columns=["length_bin"],
             index=["haul_num"],
-            values="length",
-            aggfunc="count",
+            values=count_column,
+            aggfunc=count_aggregation,
             observed=False,
         )
         # ---- Convert into a MultiIndex
@@ -1890,7 +1904,9 @@ class Reporter:
 
         # Combine the datasets
         full_pvt = len_pvt_full.add(spe_pvt_full, fill_value=0)
-        full_pvt = full_pvt.replace([np.inf, -np.inf], 0).fillna(0).astype(int)
+        full_pvt = full_pvt.replace([np.inf, -np.inf], 0).fillna(0)
+        if not net_selectivity:
+            full_pvt = full_pvt.astype(int)
 
         # Create dictionary containing the sex-specific tables
         haul_pvt_tables = {
