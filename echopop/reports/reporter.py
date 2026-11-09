@@ -615,9 +615,7 @@ def pivot_haul_tables(
     # ---- Across length bins
     haul_sex["Subtotal"] = haul_sex.sum(axis=1)
     # ---- Across hauls
-    haul_sex.loc["Subtotal"] = pd.concat(
-        [haul_sex.iloc[:, :-1].sum(axis=0), pd.Series([np.nan])]
-    )
+    haul_sex.loc["Subtotal"] = pd.concat([haul_sex.iloc[:, :-1].sum(axis=0), pd.Series([np.nan])])
 
     # Drop column and index names
     haul_sex.rename_axis(columns=None, index=None, inplace=True)
@@ -1849,7 +1847,7 @@ class Reporter:
         # ---- Specimen
         count_column = "length_count" if net_selectivity else "length"
         count_aggregation = "sum" if net_selectivity else "count"
-        
+
         spe_pvt = specimen_data_cleaned.pivot_table(
             columns=["sex", "length_bin"],
             index=["haul_num"],

@@ -66,12 +66,18 @@ def test_total_missing_expanded_counts(tmp_path, biodata):
     report.total_length_haul_counts_report("observed.xlsx", sheets, biodata)
     with pytest.raises(KeyError, match="length_count"):
         report.total_length_haul_counts_report(
-            "expanded.xlsx", sheets, biodata, net_selectivity=True,
+            "expanded.xlsx",
+            sheets,
+            biodata,
+            net_selectivity=True,
         )
 
 
 def test_total_invalid_selectivity_flag(tmp_path, biodata):
     with pytest.raises(TypeError, match="net_selectivity"):
         Reporter(tmp_path, verbose=False).total_length_haul_counts_report(
-            "counts.xlsx", {}, biodata, net_selectivity="false",
+            "counts.xlsx",
+            {},
+            biodata,
+            net_selectivity="false",
         )
