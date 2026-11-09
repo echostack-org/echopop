@@ -613,10 +613,10 @@ def pivot_haul_tables(
 
     # Add margins
     # ---- Across length bins
-    haul_sex["Subtotal"] = haul_sex.sum(axis=1).astype(int)
+    haul_sex["Subtotal"] = haul_sex.sum(axis=1)
     # ---- Across hauls
     haul_sex.loc["Subtotal"] = pd.concat(
-        [haul_sex.iloc[:, :-1].sum(axis=0).astype(int), pd.Series([None], dtype="Int64")]
+        [haul_sex.iloc[:, :-1].sum(axis=0), pd.Series([np.nan])]
     )
 
     # Drop column and index names
@@ -1065,6 +1065,8 @@ class Reporter:
         filename: str,
         sheetnames: dict[str, str],
         bio_data: pd.DataFrame,
+        *,
+        net_selectivity: bool = False,
     ) -> None:
         """
         Create and write an aged-length haul counts Excel report.
@@ -1084,6 +1086,10 @@ class Reporter:
             - 'length' (numeric)
             - 'length_bin' (interval-like objects with .mid)
             - 'haul_num' (identifier for haul)
+        net_selectivity : bool, default False
+            Sum precomputed 'length_count' values instead of counting nonmissing lengths.
+            Requires 'length_count' in bio_data. Correction must already have been applied
+            upstream; specimens from uncorrected gears should have a count of one.
 
         Returns
         -------
@@ -1115,8 +1121,12 @@ class Reporter:
             raise TypeError("'filename' must be a `str`.")
         if not isinstance(sheetnames, dict):
             raise TypeError("'sheetnames' must be a `dict`.")
+        if not isinstance(net_selectivity, bool):
+            raise TypeError("'net_selectivity' must be a `bool`.")
         # ---- Columns
         required_cols = {"sex", "length", "length_bin", "haul_num"}
+        if net_selectivity:
+            required_cols.add("length_count")
         missing = required_cols.difference(bio_data.columns)
         if missing:
             raise KeyError(f"'bio_data' missing required columns: {missing}.")
@@ -1130,12 +1140,15 @@ class Reporter:
         # Filter out unsexed -- i.e. keep only sexed fish
         bio_data_cleaned = bio_data.loc[bio_data["sex"].isin(["male", "female"])]
 
+        count_column = "length_count" if net_selectivity else "length"
+        count_aggregation = "sum" if net_selectivity else "count"
+
         # Create a pivot table
         bio_pvt = bio_data_cleaned.pivot_table(
             columns=["sex", "length_bin"],
             index=["haul_num"],
-            values="length",
-            aggfunc="count",
+            values=count_column,
+            aggfunc=count_aggregation,
             observed=False,
         )
 
@@ -1145,8 +1158,8 @@ class Reporter:
         bio_pvt_all = bio_data_all.pivot_table(
             columns=["length_bin"],
             index=["haul_num"],
-            values="length",
-            aggfunc="count",
+            values=count_column,
+            aggfunc=count_aggregation,
             observed=False,
         )
         # ---- Convert into a MultiIndex
@@ -1156,7 +1169,8 @@ class Reporter:
         bio_pvt_full = pd.concat([bio_pvt, bio_pvt_all], axis=1).fillna(0.0)
         # ---- Regain typing and sorting, if needed
         bio_pvt_full.sort_index(inplace=True)
-        bio_pvt_full = bio_pvt_full.astype(int)
+        if not net_selectivity:
+            bio_pvt_full = bio_pvt_full.astype(int)
 
         # Create dictionary containing the sex-specific tables
         haul_pvt_tables = {
