@@ -870,7 +870,7 @@ def weight_proportions(
     Returns
     -------
     xr.Dataset
-        Dataset containing the aged weight proportions in "proportion", 
+        Dataset containing the aged weight proportions in "proportion",
         indexed by all grouping dimensions present in the input data.
 
     Notes
