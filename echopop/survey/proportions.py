@@ -902,7 +902,8 @@ def weight_proportions(
     aged_weights = weight_data["aged"]
     expansion_inputs = (
         tuple(weight_data[key] for key in ("aged_observed", "unaged", "unaged_observed"))
-        if net_selectivity else ()
+        if net_selectivity
+        else ()
     )
     if net_selectivity:
         if proportion_reference != "catch":
@@ -916,7 +917,9 @@ def weight_proportions(
     stratum_dim_list = [stratum_dim] if stratum_dim is not None else []
 
     # Compute the total weights per stratum from the aged fish
-    group_weights = aged_weights.sum(dim=[d for d in aged_weights.dims if d not in stratum_dim_list])
+    group_weights = aged_weights.sum(
+        dim=[d for d in aged_weights.dims if d not in stratum_dim_list]
+    )
 
     # Conditionally drop specimen-only hauls if required
     if proportion_reference == "catch_plus_specimen":
@@ -956,6 +959,7 @@ def weight_proportions(
         )
 
     if net_selectivity:
+
         def stratum_total(data):
             return data.astype(float).sum(dim=[d for d in data.dims if d not in stratum_dim_list])
 
@@ -966,7 +970,9 @@ def weight_proportions(
         remaining = total_weights - observed_aged  # observed unaged + tossed
         if bool((remaining < 0).any()):
             raise ValueError("Observed aged weight exceeds catch weight.")
-        ratio = expanded_unaged / observed_unaged  # expansion ratio that will be used for unaged + tossed
+        ratio = (
+            expanded_unaged / observed_unaged
+        )  # expansion ratio that will be used for unaged + tossed
         invalid_ratio = ~np.isfinite(ratio) | (ratio <= 0)
         # Weights are in kg. Leave a sub-1 kg remainder unexpanded when the
         # unaged sample cannot supply a valid expansion ratio.
