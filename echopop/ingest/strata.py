@@ -45,7 +45,7 @@ def load_single_stratum_sheet(
 
     # Rename columns if mapping is provided
     if column_name_map:
-        df.rename(columns=column_name_map, inplace=True)
+        df = df.rename(columns=column_name_map)
 
     return df
 
@@ -175,7 +175,7 @@ def geostrata_bins(df: pd.DataFrame) -> pd.DataFrame:
 
     if "northlimit_latitude" in result_df.columns:
         # Sort by latitude
-        result_df.sort_values(["northlimit_latitude"], inplace=True)
+        result_df = result_df.sort_values(["northlimit_latitude"])
 
         # Create latitude bins
         latitude_bins = np.concatenate([[-90], result_df["northlimit_latitude"].unique(), [90]])
@@ -232,7 +232,7 @@ def join_strata_by_haul(
 
         # Rename the stratum column name, if needed
         if stratum_name not in df_merged.columns:
-            df_merged.rename(columns={"stratum_num": stratum_name}, inplace=True)
+            df_merged = df_merged.rename(columns={"stratum_num": stratum_name})
 
         # Replace missing strata with `default_stratum`
         df_merged[stratum_name] = df_merged[stratum_name].fillna(default_stratum)
@@ -361,7 +361,7 @@ def join_strata_by_uid(
 
         # Rename the stratum column name, if needed
         if stratum_name not in df_merged.columns:
-            df_merged.rename(columns={"stratum_num": stratum_name}, inplace=True)
+            df_merged = df_merged.rename(columns={"stratum_num": stratum_name})
 
         # Replace missing strata with `default_stratum`
         df_merged[stratum_name] = df_merged[stratum_name].fillna(default_stratum)

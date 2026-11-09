@@ -817,7 +817,7 @@ def aggregate_stratum_weights(input_data, stratum_col="stratum_num"):
     final_df = pd.DataFrame(results)
 
     # Fill NaN values with 0
-    final_df.fillna(0, inplace=True)
+    final_df = final_df.fillna(0)
 
     return final_df
 

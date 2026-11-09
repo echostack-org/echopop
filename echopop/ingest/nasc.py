@@ -152,7 +152,7 @@ def read_nasc_file(
 
     # Rename columns
     if column_name_map:
-        consolidated_file.rename(columns=column_name_map, inplace=True)
+        consolidated_file = consolidated_file.rename(columns=column_name_map)
 
     # Fix latitude and longitude
     # ---- Latitude
@@ -215,7 +215,7 @@ def read_afsc_nasc_file(
 
     # Rename columns
     if column_name_map:
-        consolidated_file.rename(columns=column_name_map, inplace=True)
+        consolidated_file = consolidated_file.rename(columns=column_name_map)
 
     # Fix latitude and longitude
     # ---- Latitude
@@ -378,10 +378,10 @@ def rename_echoview_export_columns(filename: Path, latlon_suffix: str = "s") -> 
         }.items()
         if target not in df.columns
     }
-    df.rename(columns=coordinate_mapping, inplace=True)
+    df = df.rename(columns=coordinate_mapping)
 
     # Rename columns used by Echopop
-    df.rename(columns=ECHOVIEW_TO_ECHOPOP, inplace=True)
+    df = df.rename(columns=ECHOVIEW_TO_ECHOPOP)
 
     return df
 
@@ -402,20 +402,17 @@ def sort_echoview_export_df(export_df: pd.DataFrame, inplace: bool = False) -> p
     pd.DataFrame or None
         Sorted and reindexed DataFrame if inplace=False, None otherwise
     """
-    # Work on the original or a copy based on inplace parameter
-    df = export_df if inplace else export_df.copy()
-
     # Check columns against the appropriate sorting columns
-    sort_cols = [col for col in ECHOVIEW_EXPORT_ROW_SORT if col in df.columns]
+    sort_cols = [col for col in ECHOVIEW_EXPORT_ROW_SORT if col in export_df.columns]
+    df = export_df.sort_values(sort_cols).reset_index(drop=True)
 
-    # Sort the columns
-    df.sort_values(sort_cols, inplace=True)
-
-    # Reindex
-    df.reset_index(drop=True, inplace=True)
-
-    # Return None for inplace=True, df otherwise
-    return None if inplace else df
+    if inplace:
+        # Preserve the caller's DataFrame and each column's dtype.
+        for position in range(len(df.columns)):
+            export_df.isetitem(position, df.iloc[:, position].array)
+        export_df.index = df.index
+        return None
+    return df
 
 
 def update_transect_spacing(
@@ -611,7 +608,7 @@ def merge_exports(
     merged_df = df_cells.merge(df_intervals, how="outer").merge(df_layers, how="outer")
 
     # Drop NA
-    merged_df.dropna(subset=["interval", "nasc"], inplace=True)
+    merged_df = merged_df.dropna(subset=["interval", "nasc"])
 
     # Restore the original datatypes
     merged_df = merged_df.astype(all_dtypes)
@@ -763,7 +760,7 @@ def read_transect_region_haul_key(
 
     # Rename column names, if defined
     if column_name_map:
-        transect_region_df.rename(columns=column_name_map, inplace=True)
+        transect_region_df = transect_region_df.rename(columns=column_name_map)
 
     # TODO: Insert validation here
 
@@ -1157,7 +1154,7 @@ def process_region_names(
     # ---- Concatenate the processed region metadata
     mapped_cells.loc[:, processed_regions.columns] = processed_regions
     # ---- Reset the index
-    mapped_cells.reset_index(inplace=True)
+    mapped_cells = mapped_cells.reset_index()
 
     # Return the mapped DataFrame
     return mapped_cells
@@ -1316,7 +1313,7 @@ def consolidate_echvoiew_nasc(
     # Append the haul numbers and integrated NASC values to the interval template
     interval_copy.loc[:, nasc_hauls.columns] = nasc_hauls
     # ---- Reset the index
-    interval_copy.reset_index(inplace=True)
+    interval_copy = interval_copy.reset_index()
 
     # Update UID entries as they apply
     if "ship" in interval_copy.columns:

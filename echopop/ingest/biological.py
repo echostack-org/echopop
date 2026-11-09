@@ -54,7 +54,7 @@ def load_single_biological_sheet(
 
     # Rename the columns
     if column_name_map:
-        df_initial.rename(columns=column_name_map, inplace=True)
+        df_initial = df_initial.rename(columns=column_name_map)
 
     # Apply ship and survey filtering
     df_filtered = apply_ship_survey_filters(df_initial, survey_subset)
@@ -94,7 +94,7 @@ def load_single_biological_view(
 
     # Rename the columns
     if column_name_map:
-        df_initial.rename(columns=column_name_map, inplace=True)
+        df_initial = df_initial.rename(columns=column_name_map)
 
     # Apply ship and survey filtering
     df_filtered = apply_ship_survey_filters(df_initial, survey_subset)
@@ -446,7 +446,7 @@ def apply_composite_key(
 
     # Drop "uid" from data
     if "uid" in biodata.columns:
-        biodata.drop(columns=["uid"], inplace=True)
+        del biodata["uid"]
 
     # Left-merge
     shared_columns = [c for c in composite_id.columns if c in biodata.columns and c != "uid"]

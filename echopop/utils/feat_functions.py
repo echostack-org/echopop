@@ -261,7 +261,7 @@ def convert_afsc_nasc_to_feat(
     )
 
     # Create distance intervals
-    df.rename(columns={"distance": "distance_s"}, inplace=True)
+    df = df.rename(columns={"distance": "distance_s"})
 
     # End of interval
     df["distance_e"] = df["distance_s"] + default_interval_distance
@@ -329,7 +329,7 @@ def filter_transect_intervals(
 
     # Rename 'transect' to 'transect_num' if it exists
     if "transect" in transect_filter.columns and "transect_num" not in transect_filter.columns:
-        transect_filter.rename(columns={"transect": "transect_num"}, inplace=True)
+        transect_filter = transect_filter.rename(columns={"transect": "transect_num"})
 
     # Validation check
     if not set(transect_filter.columns) >= set(["transect_num", "log_start", "log_end"]):
@@ -683,8 +683,8 @@ def transect_ends_crop(
     # ---- Merge
     transect_df = transects.merge(mesh_region_df, on="transect_num", how="inner")
     # ---- Set indices
-    transect_df.set_index(["mesh_region"], inplace=True)
-    mesh_region_df.set_index(["mesh_region"], inplace=True)
+    transect_df = transect_df.set_index(["mesh_region"])
+    mesh_region_df = mesh_region_df.set_index(["mesh_region"])
 
     # Generate arrays that will be used for interpolation for each region
     # ---- Region 1

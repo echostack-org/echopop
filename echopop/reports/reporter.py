@@ -618,7 +618,7 @@ def pivot_haul_tables(
     haul_sex.loc["Subtotal"] = pd.concat([haul_sex.iloc[:, :-1].sum(axis=0), pd.Series([np.nan])])
 
     # Drop column and index names
-    haul_sex.rename_axis(columns=None, index=None, inplace=True)
+    haul_sex = haul_sex.rename_axis(columns=None, index=None)
 
     # Return the updated table
     return haul_sex
@@ -668,17 +668,17 @@ def prepare_aged_biomass_dataframes(
             raise TypeError("Each entry of 'geodata_tables' must be a `pandas.DataFrame`.")
         # ---- Rename biomass column
         if sex == "all":
-            geodata_sex.rename(columns={"biomass": "wgt_total"}, inplace=True)
+            geodata_sex = geodata_sex.rename(columns={"biomass": "wgt_total"})
         else:
-            geodata_sex.rename(columns={f"biomass_{sex}": f"wgt_{sex}"}, inplace=True)
+            geodata_sex = geodata_sex.rename(columns={f"biomass_{sex}": f"wgt_{sex}"})
         # ---- Get the stratum index name before resetting
         stratum_name = geodata_sex.index.name
         # ---- Reset the index
-        geodata_sex.reset_index(inplace=True)
+        geodata_sex = geodata_sex.reset_index()
         # ---- Rename the stratum column
-        geodata_sex.rename(columns={stratum_name: "stratum"}, inplace=True)
+        geodata_sex = geodata_sex.rename(columns={stratum_name: "stratum"})
         # ---- Rename the remaining columns
-        geodata_sex.rename(columns=RENAME_MAP, inplace=True)
+        geodata_sex = geodata_sex.rename(columns=RENAME_MAP)
         # ---- Update column ordering
         sex_columns = (
             COLUMN_ORDER
@@ -1166,7 +1166,7 @@ class Reporter:
         # Concatenate the sex-specific and overall data tables
         bio_pvt_full = pd.concat([bio_pvt, bio_pvt_all], axis=1).fillna(0.0)
         # ---- Regain typing and sorting, if needed
-        bio_pvt_full.sort_index(inplace=True)
+        bio_pvt_full = bio_pvt_full.sort_index()
         if not net_selectivity:
             bio_pvt_full = bio_pvt_full.astype(int)
 
@@ -1280,10 +1280,10 @@ class Reporter:
         age_weight_proportions = pivot_aged_weight_proportions(age_weight_sums_filtered)
 
         # Set the stratum name based on the link function
-        kriged_data.rename(columns=kriged_stratum_link, inplace=True)
+        kriged_data = kriged_data.rename(columns=kriged_stratum_link)
 
         # Set the index
-        kriged_data.set_index(stratum_name, inplace=True)
+        kriged_data = kriged_data.set_index(stratum_name)
 
         # Combine the overall biomass estimates with the age-specific estimates
         kriged_tables = {
@@ -1382,11 +1382,11 @@ class Reporter:
             raise KeyError(f"Column '{kriged_stratum}' not found in the kriged mesh DataFrame.")
         else:
             # ---- Reset index
-            kriged_data.reset_index(inplace=True)
+            kriged_data = kriged_data.reset_index()
             # ---- Rename to generic
-            kriged_data.rename(columns={kriged_stratum: "stratum"}, inplace=True)
+            kriged_data = kriged_data.rename(columns={kriged_stratum: "stratum"})
             # ---- Set new index
-            kriged_data.set_index("stratum", inplace=True)
+            kriged_data = kriged_data.set_index("stratum")
 
         # Validate sigma_bs stratum name
         if (
@@ -1396,18 +1396,18 @@ class Reporter:
             raise KeyError(f"Column '{sigma_bs_stratum}' not found in the sigma_bs DataFrame.")
         else:
             # ---- Reset index
-            sigma_bs_data.reset_index(inplace=True)
+            sigma_bs_data = sigma_bs_data.reset_index()
             # ---- Rename to generic
-            sigma_bs_data.rename(columns={sigma_bs_stratum: "stratum"}, inplace=True)
+            sigma_bs_data = sigma_bs_data.rename(columns={sigma_bs_stratum: "stratum"})
             # ---- Set new index
-            sigma_bs_data.set_index("stratum", inplace=True)
+            sigma_bs_data = sigma_bs_data.set_index("stratum")
             # ---- Reindex to align with kriged mesh DataFrame
             sigma_bs_data = sigma_bs_data.reindex(kriged_data.index)
 
         # Add column to kriged data
         kriged_data["sig_b"] = 4.0 * np.pi * sigma_bs_data["sigma_bs"]
         # ---- Reset its index
-        kriged_data.reset_index(inplace=True)
+        kriged_data = kriged_data.reset_index()
 
         # Add `kriged_sd` to the kriged data
         kriged_data["krig_SD"] = kriged_data[kriged_variable] * kriged_data["cell_cv"]
@@ -1432,7 +1432,7 @@ class Reporter:
         )
 
         # Rename the columns to match required output
-        output_df.rename(
+        output_df = output_df.rename(
             columns={
                 "latitude": "Lat",
                 "longitude": "Lon",
@@ -1445,7 +1445,6 @@ class Reporter:
                 "biomass": "wgt_total",
                 "cell_cv": "krig_CV",
             },
-            inplace=True,
         )
 
         # Save the *.xlsx sheet
@@ -1746,7 +1745,7 @@ class Reporter:
         )
 
         # Rename the columns
-        transect_output.rename(
+        transect_output = transect_output.rename(
             columns={
                 "latitude": "Lat",
                 "longitude": "Lon",
@@ -1754,7 +1753,6 @@ class Reporter:
                 "nasc": "NASC",
                 "number_density": "Number density",
             },
-            inplace=True,
         )
 
         # Save the sheet
@@ -2026,7 +2024,7 @@ class Reporter:
         )
 
         # Set the index
-        transect_data.set_index(stratum_name, inplace=True)
+        transect_data = transect_data.set_index(stratum_name)
 
         # Combine the overall abundance estimates with the age-specific estimates
         transect_tables = {
@@ -2382,7 +2380,7 @@ class Reporter:
         sigma_bs_stratum = sigma_bs_stratum.copy()
 
         # Set index
-        transect_data.set_index(stratum_name, inplace=True)
+        transect_data = transect_data.set_index(stratum_name)
 
         # Reindex the sigma_bs values
         sigma_bs_stratum = sigma_bs_stratum.reindex(transect_data.index)
@@ -2397,7 +2395,7 @@ class Reporter:
         transect_data["wgt_per_fish"] = weight_strata_data
 
         # Reset the index
-        transect_data.reset_index(inplace=True)
+        transect_data = transect_data.reset_index()
 
         # Check columns
         required = set(RENAME_MAP.keys())
@@ -2406,7 +2404,7 @@ class Reporter:
             raise KeyError(f"'transect_data' missing required columns: {missing}.")
 
         # Rename columns
-        transect_data.rename(columns=RENAME_MAP, inplace=True)
+        transect_data = transect_data.rename(columns=RENAME_MAP)
 
         # Filter and sort the columns
         transect_output = transect_data.filter(list(RENAME_MAP.values()))
