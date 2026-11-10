@@ -954,7 +954,7 @@ class InversionMatrix(InversionBase):
         output = self.measurements.copy()
 
         # Drop the minimizer and label columns
-        output.drop(["minimizer", "label"], axis=1, inplace=True)
+        output = output.drop(["minimizer", "label"], axis=1)
 
         # Bundle the parameter results and add to the output
         output["parameters"] = [

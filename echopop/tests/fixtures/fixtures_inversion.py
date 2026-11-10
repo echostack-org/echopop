@@ -235,7 +235,7 @@ def inv_transect_info(inv_parameters):
         }
     ).set_index("transect_num")
     # ---- Add parameters
-    inverted_transect_data["parameters"] = [
+    inverted_transect_data[("parameters", "")] = [
         InvParameters(inv_parameters.realizations[idx]) for idx in np.linspace(0, 4, 5)
     ]
     # ---- Set column index names
@@ -291,7 +291,7 @@ def inv_interval_info(inv_parameters):
         index=interval_nasc_df.index,
     )
     # ---- Add parameters
-    inverted_interval_data["parameters"] = [
+    inverted_interval_data[("parameters", "")] = [
         InvParameters(inv_parameters.realizations[idx]) for idx in np.linspace(0, 19, 20)
     ]
     # ---- Set column index names
@@ -333,7 +333,7 @@ def inv_cells_info(inv_parameters):
         index=cells_nasc_df.index,
     )
     # ---- Add parameters
-    inverted_cells_data["parameters"] = [
+    inverted_cells_data[("parameters", "")] = [
         InvParameters(inv_parameters.realizations[idx]) for idx in np.linspace(0, 9, 10)
     ]
     # ---- Set column index names

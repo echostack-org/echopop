@@ -155,7 +155,7 @@ class JollyHampton:
         ).set_index("latitude")
 
         # Temporarily set index for efficient joining
-        data_copy.set_index("latitude", inplace=True)
+        data_copy = data_copy.set_index("latitude")
 
         # Append the transect numbers
         data_copy["transect_num"] = unique_latitude_transect_key["transect_num"]
@@ -477,7 +477,7 @@ class JollyHampton:
         stratification_group = self.strata_summary.index.names[0]
 
         # Rename the indices to include 'replicate'
-        resamples.index.set_names([stratification_group, "replicate"], inplace=True)
+        resamples.index = resamples.index.set_names([stratification_group, "replicate"])
 
         # Pivot to get strata as columns
         resamples_pvt = resamples.reset_index().pivot_table(

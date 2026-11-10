@@ -70,7 +70,7 @@ def remove_group_from_estimates(
         )
 
     # Index the transect data based on the DataArray dimensions
-    transect_data.set_index(grp_coords, inplace=True)
+    transect_data = transect_data.set_index(grp_coords)
     transect_data_cnv = transect_data.to_xarray()
 
     # Align coordinates
@@ -80,7 +80,7 @@ def remove_group_from_estimates(
     if "nasc" in group_proportions_aligned:
         transect_data["nasc"] = transect_data_cnv["nasc"] * (1 - group_proportions_aligned["nasc"])
     else:
-        transect_data.drop(columns=["nasc"], inplace=True)
+        transect_data = transect_data.drop(columns=["nasc"])
 
     # Adjust number density and abundance, if present; otherwise, drop to avoid partial evaluation
     # ---- Get variables
@@ -92,7 +92,7 @@ def remove_group_from_estimates(
             transect_data_cnv[abundance_columns] * (1 - group_proportions_aligned["abundance"])
         ).to_pandas()
     else:
-        transect_data.drop(columns=abundance_columns, inplace=True)
+        transect_data = transect_data.drop(columns=abundance_columns)
 
     # Adjust biomass and biomass density, if present; otherwise, drop to avoid partial evaluation
     # ---- Get variables
@@ -104,10 +104,10 @@ def remove_group_from_estimates(
             transect_data_cnv[biomass_columns] * (1 - group_proportions_aligned["biomass"])
         ).to_pandas()
     else:
-        transect_data.drop(columns=biomass_columns, inplace=True)
+        transect_data = transect_data.drop(columns=biomass_columns)
 
     # Restore original indexing
-    transect_data.reset_index(inplace=True)
+    transect_data = transect_data.reset_index()
 
     # Return the partitioned transect data
     return transect_data
@@ -212,14 +212,20 @@ def mesh_biomass_to_nasc(
         )
 
     # Set the link column names
-    mesh_data.rename(columns=mesh_biodata_link, inplace=True)
+    mesh_data.columns = mesh_data.rename(columns=mesh_biodata_link).columns
 
     # Map the link columns
     mesh_index = list(mesh_biodata_link.values())
 
     # Index
-    mesh_data.set_index(mesh_index, inplace=True)
-    mesh_data.sort_index(inplace=True)
+    indexed_data = mesh_data.set_index(mesh_index)
+    mesh_data.index = indexed_data.index
+    for column in mesh_data.columns.difference(indexed_data.columns):
+        del mesh_data[column]
+    sorted_data = mesh_data.sort_index()
+    for position in range(len(mesh_data.columns)):
+        mesh_data.isetitem(position, sorted_data.iloc[:, position].array)
+    mesh_data.index = sorted_data.index
     # ---- Convert to Dataset
     mesh_dataset = mesh_data.to_xarray()
 
@@ -271,12 +277,16 @@ def mesh_biomass_to_nasc(
     )
 
     # Reset the index
-    mesh_data.reset_index(inplace=True)
+    reset_data = mesh_data.reset_index()
+    mesh_data.index = reset_data.index
+    for position, column in enumerate(reset_data.columns):
+        if column not in mesh_data.columns:
+            mesh_data.insert(position, column, reset_data[column].array)
 
     # Rename
     # ---- Create inverted link dictionary
     inverted_link = {v: k for k, v in mesh_biodata_link.items()}
-    mesh_data.rename(columns=inverted_link, inplace=True)
+    mesh_data.columns = mesh_data.rename(columns=inverted_link).columns
 
 
 def impute_kriged_table(
@@ -893,7 +903,7 @@ def distribute_population_estimates(
         data_stratum = next(iter(data_proportions_link))
         if data_stratum not in data.columns:
             raise KeyError(f"Stratum '{data_stratum}' missing from `data`.")
-        data.rename(columns=data_proportions_link, inplace=True)
+        data = data.rename(columns=data_proportions_link)
 
     # Validate group_columns overlapping with data and proportions
     # ---- proportions

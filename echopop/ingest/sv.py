@@ -311,7 +311,7 @@ def aggregate_intervals(
     )
 
     # Rename the Sv column
-    data_pvt.rename(columns={"sv_t": "sv_mean"}, inplace=True)
+    data_pvt = data_pvt.rename(columns={"sv_t": "sv_mean"})
 
     # Unstack for 'frequency'
     return data_pvt.unstack("frequency").fillna(
@@ -427,14 +427,13 @@ def aggregate_transects(
     )
 
     # Rename the columns
-    data_pvt.rename(
+    data_pvt = data_pvt.rename(
         columns={
             "sv_L": "sv_mean",
             "longitude_weight": "longitude_weighted",
             "latitude_weight": "latitude_weighted",
             "thickness_interval": "thickness_mean",
         },
-        inplace=True,
     )
 
     # Add the coordinates to the index

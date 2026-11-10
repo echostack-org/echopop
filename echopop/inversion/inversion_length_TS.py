@@ -385,7 +385,7 @@ class InversionLengthTS(InversionBase):
                 self.sigma_bs_strata = impute_missing_sigma_bs(unique_strata, self.sigma_bs_strata)
 
             # Index `df_nasc` to align with `sigma_bs_strata`
-            df_nasc.set_index(self.model_params["stratify_by"], inplace=True)
+            df_nasc = df_nasc.set_index(self.model_params["stratify_by"])
 
             # Compute number density
             df_nasc["number_density"] = (

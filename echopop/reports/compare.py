@@ -121,7 +121,7 @@ def translate_dataframe(df: pd.DataFrame) -> None:
     rename_map = {col: translate_column(str(col)) for col in df.columns}
 
     # Re-assign columns in the DataFrame
-    df.rename(columns=rename_map, inplace=True)
+    df.columns = df.rename(columns=rename_map).columns
 
 
 def align_dataframes(df1: pd.DataFrame, df2: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -981,9 +981,9 @@ def plot_geodata(
             # ---- Get the differences
             diff_plot = (ep1[var] - ep2[var]).to_frame()
             # ---- Reset indices
-            echopro_plot.reset_index(inplace=True)
-            echopop_plot.reset_index(inplace=True)
-            diff_plot.reset_index(inplace=True)
+            echopro_plot = echopro_plot.reset_index()
+            echopop_plot = echopop_plot.reset_index()
+            diff_plot = diff_plot.reset_index()
             # ---- Regain the correct coordinates
             diff_plot["longitude"] = diff_plot["geometry"].apply(lambda p: p.x)
             diff_plot["latitude"] = diff_plot["geometry"].apply(lambda p: p.y)
