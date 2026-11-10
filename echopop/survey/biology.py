@@ -205,7 +205,7 @@ def length_binned_weights(
         # ---- Single set of coefficients - convert to DataFrame for consistent processing
         regression_df = pd.DataFrame([regression_coefficients])
         # ---- Reset index to avoid grouping complications
-        regression_df.reset_index(drop=True, inplace=True)
+        regression_df = regression_df.reset_index(drop=True)
         # ---- Assign metadata variables required for the output
         group_cols = []
     else:
@@ -407,7 +407,10 @@ def compute_abundance(
         ridx = {k: transect_data[k] for k in idx_names}
         grouped_proportions_ridx = grouped_proportions_excl.reindex(ridx).fillna(0.0)
         # ---- Set the index of the tabular data
-        transect_data.set_index(idx_names, inplace=True)
+        indexed_data = transect_data.set_index(idx_names)
+        transect_data.index = indexed_data.index
+        for column in transect_data.columns.difference(indexed_data.columns):
+            del transect_data[column]
         # ---- Compute number density
         grouped_number_density = number_density_vals * grouped_proportions_ridx
         # ---- Compute abundance
@@ -421,7 +424,11 @@ def compute_abundance(
             [f"abundance_{c}" for c in grouped_abundance.coords[nonidx_names[0]].values]
         ] = grouped_abundance
         # ---- Reset the index
-        transect_data.reset_index(inplace=True)
+        reset_data = transect_data.reset_index()
+        transect_data.index = reset_data.index
+        for position, column in enumerate(reset_data.columns):
+            if column not in transect_data.columns:
+                transect_data.insert(position, column, reset_data[column].array)
 
 
 def matrix_multiply_grouped_table(
@@ -570,7 +577,10 @@ def compute_biomass(
     nonidx_names = [id for id in set(stratum_weights.coords) if id not in idx_names]
 
     # Set index
-    transect_data.set_index(idx_names, inplace=True)
+    indexed_data = transect_data.set_index(idx_names)
+    transect_data.index = indexed_data.index
+    for column in transect_data.columns.difference(indexed_data.columns):
+        del transect_data[column]
 
     # If grouped beyond just index
     if len(nonidx_names) > 0:
@@ -605,4 +615,8 @@ def compute_biomass(
         )
 
     # Reset the index
-    transect_data.reset_index(inplace=True)
+    reset_data = transect_data.reset_index()
+    transect_data.index = reset_data.index
+    for position, column in enumerate(reset_data.columns):
+        if column not in transect_data.columns:
+            transect_data.insert(position, column, reset_data[column].array)

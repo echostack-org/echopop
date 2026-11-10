@@ -551,7 +551,7 @@ def pivot_aged_weight_proportions(
 
     # Convert the interval indices to numerics
     age_weight_full.index = (
-        pd.Series(age_weight_full.index).apply(lambda x: x.mid).values.to_numpy().astype(int)
+        pd.Series(age_weight_full.index).apply(lambda x: x.mid).to_numpy().astype(int)
     )
 
     # Calculate proportions
@@ -613,14 +613,12 @@ def pivot_haul_tables(
 
     # Add margins
     # ---- Across length bins
-    haul_sex["Subtotal"] = haul_sex.sum(axis=1).astype(int)
+    haul_sex["Subtotal"] = haul_sex.sum(axis=1)
     # ---- Across hauls
-    haul_sex.loc["Subtotal"] = pd.concat(
-        [haul_sex.iloc[:, :-1].sum(axis=0).astype(int), pd.Series([None], dtype="Int64")]
-    )
+    haul_sex.loc["Subtotal"] = pd.concat([haul_sex.iloc[:, :-1].sum(axis=0), pd.Series([np.nan])])
 
     # Drop column and index names
-    haul_sex.rename_axis(columns=None, index=None, inplace=True)
+    haul_sex = haul_sex.rename_axis(columns=None, index=None)
 
     # Return the updated table
     return haul_sex
@@ -670,17 +668,17 @@ def prepare_aged_biomass_dataframes(
             raise TypeError("Each entry of 'geodata_tables' must be a `pandas.DataFrame`.")
         # ---- Rename biomass column
         if sex == "all":
-            geodata_sex.rename(columns={"biomass": "wgt_total"}, inplace=True)
+            geodata_sex = geodata_sex.rename(columns={"biomass": "wgt_total"})
         else:
-            geodata_sex.rename(columns={f"biomass_{sex}": f"wgt_{sex}"}, inplace=True)
+            geodata_sex = geodata_sex.rename(columns={f"biomass_{sex}": f"wgt_{sex}"})
         # ---- Get the stratum index name before resetting
         stratum_name = geodata_sex.index.name
         # ---- Reset the index
-        geodata_sex.reset_index(inplace=True)
+        geodata_sex = geodata_sex.reset_index()
         # ---- Rename the stratum column
-        geodata_sex.rename(columns={stratum_name: "stratum"}, inplace=True)
+        geodata_sex = geodata_sex.rename(columns={stratum_name: "stratum"})
         # ---- Rename the remaining columns
-        geodata_sex.rename(columns=RENAME_MAP, inplace=True)
+        geodata_sex = geodata_sex.rename(columns=RENAME_MAP)
         # ---- Update column ordering
         sex_columns = (
             COLUMN_ORDER
@@ -1065,6 +1063,8 @@ class Reporter:
         filename: str,
         sheetnames: dict[str, str],
         bio_data: pd.DataFrame,
+        *,
+        net_selectivity: bool = False,
     ) -> None:
         """
         Create and write an aged-length haul counts Excel report.
@@ -1084,6 +1084,10 @@ class Reporter:
             - 'length' (numeric)
             - 'length_bin' (interval-like objects with .mid)
             - 'haul_num' (identifier for haul)
+        net_selectivity : bool, default False
+            Sum precomputed 'length_count' values instead of counting nonmissing lengths.
+            Requires 'length_count' in bio_data. Correction must already have been applied
+            upstream; specimens from uncorrected gears should have a count of one.
 
         Returns
         -------
@@ -1115,8 +1119,12 @@ class Reporter:
             raise TypeError("'filename' must be a `str`.")
         if not isinstance(sheetnames, dict):
             raise TypeError("'sheetnames' must be a `dict`.")
+        if not isinstance(net_selectivity, bool):
+            raise TypeError("'net_selectivity' must be a `bool`.")
         # ---- Columns
         required_cols = {"sex", "length", "length_bin", "haul_num"}
+        if net_selectivity:
+            required_cols.add("length_count")
         missing = required_cols.difference(bio_data.columns)
         if missing:
             raise KeyError(f"'bio_data' missing required columns: {missing}.")
@@ -1130,12 +1138,15 @@ class Reporter:
         # Filter out unsexed -- i.e. keep only sexed fish
         bio_data_cleaned = bio_data.loc[bio_data["sex"].isin(["male", "female"])]
 
+        count_column = "length_count" if net_selectivity else "length"
+        count_aggregation = "sum" if net_selectivity else "count"
+
         # Create a pivot table
         bio_pvt = bio_data_cleaned.pivot_table(
             columns=["sex", "length_bin"],
             index=["haul_num"],
-            values="length",
-            aggfunc="count",
+            values=count_column,
+            aggfunc=count_aggregation,
             observed=False,
         )
 
@@ -1145,8 +1156,8 @@ class Reporter:
         bio_pvt_all = bio_data_all.pivot_table(
             columns=["length_bin"],
             index=["haul_num"],
-            values="length",
-            aggfunc="count",
+            values=count_column,
+            aggfunc=count_aggregation,
             observed=False,
         )
         # ---- Convert into a MultiIndex
@@ -1155,8 +1166,9 @@ class Reporter:
         # Concatenate the sex-specific and overall data tables
         bio_pvt_full = pd.concat([bio_pvt, bio_pvt_all], axis=1).fillna(0.0)
         # ---- Regain typing and sorting, if needed
-        bio_pvt_full.sort_index(inplace=True)
-        bio_pvt_full = bio_pvt_full.astype(int)
+        bio_pvt_full = bio_pvt_full.sort_index()
+        if not net_selectivity:
+            bio_pvt_full = bio_pvt_full.astype(int)
 
         # Create dictionary containing the sex-specific tables
         haul_pvt_tables = {
@@ -1268,10 +1280,10 @@ class Reporter:
         age_weight_proportions = pivot_aged_weight_proportions(age_weight_sums_filtered)
 
         # Set the stratum name based on the link function
-        kriged_data.rename(columns=kriged_stratum_link, inplace=True)
+        kriged_data = kriged_data.rename(columns=kriged_stratum_link)
 
         # Set the index
-        kriged_data.set_index(stratum_name, inplace=True)
+        kriged_data = kriged_data.set_index(stratum_name)
 
         # Combine the overall biomass estimates with the age-specific estimates
         kriged_tables = {
@@ -1370,11 +1382,11 @@ class Reporter:
             raise KeyError(f"Column '{kriged_stratum}' not found in the kriged mesh DataFrame.")
         else:
             # ---- Reset index
-            kriged_data.reset_index(inplace=True)
+            kriged_data = kriged_data.reset_index()
             # ---- Rename to generic
-            kriged_data.rename(columns={kriged_stratum: "stratum"}, inplace=True)
+            kriged_data = kriged_data.rename(columns={kriged_stratum: "stratum"})
             # ---- Set new index
-            kriged_data.set_index("stratum", inplace=True)
+            kriged_data = kriged_data.set_index("stratum")
 
         # Validate sigma_bs stratum name
         if (
@@ -1384,18 +1396,18 @@ class Reporter:
             raise KeyError(f"Column '{sigma_bs_stratum}' not found in the sigma_bs DataFrame.")
         else:
             # ---- Reset index
-            sigma_bs_data.reset_index(inplace=True)
+            sigma_bs_data = sigma_bs_data.reset_index()
             # ---- Rename to generic
-            sigma_bs_data.rename(columns={sigma_bs_stratum: "stratum"}, inplace=True)
+            sigma_bs_data = sigma_bs_data.rename(columns={sigma_bs_stratum: "stratum"})
             # ---- Set new index
-            sigma_bs_data.set_index("stratum", inplace=True)
+            sigma_bs_data = sigma_bs_data.set_index("stratum")
             # ---- Reindex to align with kriged mesh DataFrame
             sigma_bs_data = sigma_bs_data.reindex(kriged_data.index)
 
         # Add column to kriged data
         kriged_data["sig_b"] = 4.0 * np.pi * sigma_bs_data["sigma_bs"]
         # ---- Reset its index
-        kriged_data.reset_index(inplace=True)
+        kriged_data = kriged_data.reset_index()
 
         # Add `kriged_sd` to the kriged data
         kriged_data["krig_SD"] = kriged_data[kriged_variable] * kriged_data["cell_cv"]
@@ -1420,7 +1432,7 @@ class Reporter:
         )
 
         # Rename the columns to match required output
-        output_df.rename(
+        output_df = output_df.rename(
             columns={
                 "latitude": "Lat",
                 "longitude": "Lon",
@@ -1433,7 +1445,6 @@ class Reporter:
                 "biomass": "wgt_total",
                 "cell_cv": "krig_CV",
             },
-            inplace=True,
         )
 
         # Save the *.xlsx sheet
@@ -1534,14 +1545,14 @@ class Reporter:
         aged_table.index = (
             pd.Series(aged_table.index, name="length_bin")
             .apply(lambda x: x.mid)
-            .values.to_numpy()
+            .to_numpy()
             .astype(int)
         )
         # ---- Restack sex
         aged_table = aged_table.stack("sex", future_stack=True)
         # ---- Convert the column indices to numerics
         aged_table.columns = (
-            pd.Series(aged_table.columns).apply(lambda x: x.mid).values.to_numpy().astype(int)
+            pd.Series(aged_table.columns).apply(lambda x: x.mid).to_numpy().astype(int)
         )
         # ---- Swap the index levels
         aged_table = aged_table.unstack("sex").swaplevel(axis=1)
@@ -1559,7 +1570,7 @@ class Reporter:
         unaged_table.index = (
             pd.Series(unaged_table.index, name="length_bin")
             .apply(lambda x: x.mid)
-            .values.to_numpy()
+            .to_numpy()
             .astype(int)
         )
 
@@ -1645,14 +1656,14 @@ class Reporter:
         table_cnv.index = (
             pd.Series(table_cnv.index, name="length_bin")
             .apply(lambda x: x.mid)
-            .values.to_numpy()
+            .to_numpy()
             .astype(int)
         )
         # ---- Restack sex
         table_cnv = table_cnv.stack("sex", future_stack=True)
         # ---- Convert the column indices to numerics
         table_cnv.columns = (
-            pd.Series(table_cnv.columns).apply(lambda x: x.mid).values.to_numpy().astype(int)
+            pd.Series(table_cnv.columns).apply(lambda x: x.mid).to_numpy().astype(int)
         )
         # ---- Swap the index levels
         table_cnv = table_cnv.unstack("sex").swaplevel(axis=1)
@@ -1734,7 +1745,7 @@ class Reporter:
         )
 
         # Rename the columns
-        transect_output.rename(
+        transect_output = transect_output.rename(
             columns={
                 "latitude": "Lat",
                 "longitude": "Lon",
@@ -1742,7 +1753,6 @@ class Reporter:
                 "nasc": "NASC",
                 "number_density": "Number density",
             },
-            inplace=True,
         )
 
         # Save the sheet
@@ -1757,6 +1767,8 @@ class Reporter:
         filename: str,
         sheetnames: dict[str, str],
         bio_data: dict[str, pd.DataFrame],
+        *,
+        net_selectivity: bool = False,
     ) -> None:
         """
         Create an Excel report of combined specimen and length haul totals.
@@ -1776,6 +1788,11 @@ class Reporter:
             'length_bin', 'haul_num')
             - 'length' : pandas.DataFrame containing length counts (must include 'sex',
             'length_bin', 'haul_num', 'length_count')
+        net_selectivity : bool, default False
+            Sum precomputed specimen 'length_count' values instead of counting nonmissing
+            specimen lengths. Correction must already have been applied upstream, with
+            a count of one for specimens from uncorrected gears. Length data always use
+            the supplied 'length_count' values.
 
         Returns
         -------
@@ -1800,6 +1817,10 @@ class Reporter:
             raise TypeError("'bio_data' must be a `dict`.")
         if "specimen" not in bio_data or "length" not in bio_data:
             raise KeyError("'bio_data' must include 'specimen' and 'length' keys.")
+        if not isinstance(net_selectivity, bool):
+            raise TypeError("'net_selectivity' must be a `bool`.")
+        if net_selectivity and "length_count" not in bio_data["specimen"].columns:
+            raise KeyError("'bio_data' specimen data missing required column: 'length_count'.")
         if not isinstance(filename, str):
             raise TypeError("'filename' must be a `str`.")
         if not isinstance(sheetnames, dict):
@@ -1822,11 +1843,14 @@ class Reporter:
 
         # Create pivot tables
         # ---- Specimen
+        count_column = "length_count" if net_selectivity else "length"
+        count_aggregation = "sum" if net_selectivity else "count"
+
         spe_pvt = specimen_data_cleaned.pivot_table(
             columns=["sex", "length_bin"],
             index=["haul_num"],
-            values="length",
-            aggfunc="count",
+            values=count_column,
+            aggfunc=count_aggregation,
             observed=False,
         )
         # ---- Length
@@ -1847,8 +1871,8 @@ class Reporter:
         specimen_pvt_all = specimen_data_all.pivot_table(
             columns=["length_bin"],
             index=["haul_num"],
-            values="length",
-            aggfunc="count",
+            values=count_column,
+            aggfunc=count_aggregation,
             observed=False,
         )
         # ---- Convert into a MultiIndex
@@ -1876,7 +1900,9 @@ class Reporter:
 
         # Combine the datasets
         full_pvt = len_pvt_full.add(spe_pvt_full, fill_value=0)
-        full_pvt = full_pvt.replace([np.inf, -np.inf], 0).fillna(0).astype(int)
+        full_pvt = full_pvt.replace([np.inf, -np.inf], 0).fillna(0)
+        if not net_selectivity:
+            full_pvt = full_pvt.astype(int)
 
         # Create dictionary containing the sex-specific tables
         haul_pvt_tables = {
@@ -1998,7 +2024,7 @@ class Reporter:
         )
 
         # Set the index
-        transect_data.set_index(stratum_name, inplace=True)
+        transect_data = transect_data.set_index(stratum_name)
 
         # Combine the overall abundance estimates with the age-specific estimates
         transect_tables = {
@@ -2088,14 +2114,14 @@ class Reporter:
         aged_table.index = (
             pd.Series(aged_table.index, name="length_bin")
             .apply(lambda x: x.mid)
-            .values.to_numpy()
+            .to_numpy()
             .astype(int)
         )
         # ---- Restack sex
         aged_table = aged_table.stack("sex", future_stack=True)
         # ---- Convert the column indices to numerics
         aged_table.columns = (
-            pd.Series(aged_table.columns).apply(lambda x: x.mid).values.to_numpy().astype(int)
+            pd.Series(aged_table.columns).apply(lambda x: x.mid).to_numpy().astype(int)
         )
         # ---- Swap the index levels
         aged_table = aged_table.unstack("sex").swaplevel(axis=1)
@@ -2113,7 +2139,7 @@ class Reporter:
         unaged_table.index = (
             pd.Series(unaged_table.index, name="length_bin")
             .apply(lambda x: x.mid)
-            .values.to_numpy()
+            .to_numpy()
             .astype(int)
         )
 
@@ -2199,14 +2225,14 @@ class Reporter:
         aged_table.index = (
             pd.Series(aged_table.index, name="length_bin")
             .apply(lambda x: x.mid)
-            .values.to_numpy()
+            .to_numpy()
             .astype(int)
         )
         # ---- Restack sex
         aged_table = aged_table.stack("sex", future_stack=True)
         # ---- Convert the column indices to numerics
         aged_table.columns = (
-            pd.Series(aged_table.columns).apply(lambda x: x.mid).values.to_numpy().astype(int)
+            pd.Series(aged_table.columns).apply(lambda x: x.mid).to_numpy().astype(int)
         )
         # ---- Swap the index levels
         aged_table = aged_table.unstack("sex").swaplevel(axis=1)
@@ -2354,7 +2380,7 @@ class Reporter:
         sigma_bs_stratum = sigma_bs_stratum.copy()
 
         # Set index
-        transect_data.set_index(stratum_name, inplace=True)
+        transect_data = transect_data.set_index(stratum_name)
 
         # Reindex the sigma_bs values
         sigma_bs_stratum = sigma_bs_stratum.reindex(transect_data.index)
@@ -2369,7 +2395,7 @@ class Reporter:
         transect_data["wgt_per_fish"] = weight_strata_data
 
         # Reset the index
-        transect_data.reset_index(inplace=True)
+        transect_data = transect_data.reset_index()
 
         # Check columns
         required = set(RENAME_MAP.keys())
@@ -2378,7 +2404,7 @@ class Reporter:
             raise KeyError(f"'transect_data' missing required columns: {missing}.")
 
         # Rename columns
-        transect_data.rename(columns=RENAME_MAP, inplace=True)
+        transect_data = transect_data.rename(columns=RENAME_MAP)
 
         # Filter and sort the columns
         transect_output = transect_data.filter(list(RENAME_MAP.values()))

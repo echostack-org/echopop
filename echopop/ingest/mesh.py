@@ -50,7 +50,7 @@ def load_mesh_data(
 
     # Rename columns if mapping is provided
     if column_name_map:
-        df.rename(columns=column_name_map, inplace=True)
+        df = df.rename(columns=column_name_map)
 
     return df
 
@@ -94,6 +94,6 @@ def load_isobath_data(
 
     # Rename columns if mapping is provided
     if column_name_map:
-        df.rename(columns=column_name_map, inplace=True)
+        df = df.rename(columns=column_name_map)
 
     return df

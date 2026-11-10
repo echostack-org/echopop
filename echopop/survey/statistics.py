@@ -606,7 +606,7 @@ def confidence_interval(
     # Add mean value to the ci estimates and reorder
     ci_output = pd.concat([ci_est, ci_stats], axis=0).reindex(index=["low", "mean", "high", "bias"])
     # ---- Rename the index
-    ci_output.index.set_names(["metric"], inplace=True)
+    ci_output.index = ci_output.index.set_names(["metric"])
 
     # Handle output formatting based on population_values structure
     if hasattr(population_values, "columns") and hasattr(population_values.columns, "names"):

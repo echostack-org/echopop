@@ -400,7 +400,7 @@ def test_weight_table():
     }
     index = pd.Index(["(10, 20]", "(20, 30]"], name="length_bin")
     data_df = pd.DataFrame(data, index=index)
-    data_df.columns.rename("sex", inplace=True)
+    data_df.columns = data_df.columns.rename("sex")
 
     return (
         data_df.stack()
