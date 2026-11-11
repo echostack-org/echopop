@@ -985,7 +985,8 @@ def weight_proportions(
             return data.astype(float).sum(dim=[d for d in data.dims if d not in stratum_dim_list])
 
         observed_aged = stratum_total(weight_data["aged_observed"]).reindex_like(
-            total_weights, fill_value=0.0,
+            total_weights,
+            fill_value=0.0,
         )
         remaining = total_weights - observed_aged
         if bool((remaining < 0).any()):
@@ -999,32 +1000,40 @@ def weight_proportions(
         observed_unaged_unsexed = selected_total(weight_data["unaged_observed"], ["unsexed"])
 
         # Expansion ratio of sexed and unsexed fish
-        ratio_unaged_sexed = selected_total(weight_data["unaged"], ["male", "female"]) / observed_unaged_sexed
-        ratio_unaged_unsexed = selected_total(weight_data["unaged"], ["unsexed"]) / observed_unaged_unsexed
+        ratio_unaged_sexed = (
+            selected_total(weight_data["unaged"], ["male", "female"]) / observed_unaged_sexed
+        )
+        ratio_unaged_unsexed = (
+            selected_total(weight_data["unaged"], ["unsexed"]) / observed_unaged_unsexed
+        )
 
-        # Use sample count to disinguish the case when there are sexed unaged fish without length,
+        # Use sample count to distinguish the case when there are sexed unaged fish without length,
         # or that there are no unaged fish at all
         counts = weight_data["unaged_sample_count"]
         has_sexed = selected_total(counts, ["male", "female"]) > 0
         has_unsexed = selected_total(counts, ["unsexed"]) > 0
 
         # Select which expansion ratio to use:
-        # - Normally the expansion of unaged + toss fish 
+        # - Normally the expansion of unaged + toss fish
         #   will use the ratio computed from sexed fish ONLY
-        # - If all fish are unsexed in the unaged sample, 
+        # - If all fish are unsexed in the unaged sample,
         #   the expansion of unaged + toss fish will used the ratio computed from unsexed fish ONLY
-        ratio = xr.where(has_sexed, ratio_unaged_sexed, xr.where(has_unsexed, ratio_unaged_unsexed, 1.0))
+        ratio = xr.where(
+            has_sexed, ratio_unaged_sexed, xr.where(has_unsexed, ratio_unaged_unsexed, 1.0)
+        )
 
         # Cases to use expansion ratio=1:
         # - If there is no unaged fish, use expansion ratio=1
-        # - If there are unaged with but no length data are available to infer their weight, 
+        # - If there are unaged with but no length data are available to infer their weight,
         #   use expansion ratio=1 and issue a warning
         invalid = (~np.isfinite(ratio) | (ratio <= 0)) & (has_sexed | has_unsexed)
         if bool(invalid.any()):
             affected = invalid.to_series().loc[lambda values: values].index.tolist()
             warnings.warn(
                 "Unaged samples have unusable weights; using expansion ratio 1 "
-                f"in strata: {affected}", UserWarning, stacklevel=2,
+                f"in strata: {affected}",
+                UserWarning,
+                stacklevel=2,
             )
         ratio = ratio.where(~invalid, 1.0)
         total_weights = group_weights_aligned + remaining * ratio.where(remaining != 0, 1.0)
@@ -1186,7 +1195,7 @@ def fitted_weight_proportions(
     # Apply mutable default guard and convert to list for internal use
     stratum_dim_list = [stratum_dim] if stratum_dim is not None else []
 
-    # Preserve the original calculation that does not include "unsexed" fish 
+    # Preserve the original calculation that does not include "unsexed" fish
     # in unaged weight proportions
     weight_data = weight_data.sel(sex=["male", "female"])
 
