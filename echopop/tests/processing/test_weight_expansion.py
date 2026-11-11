@@ -29,6 +29,7 @@ def test_expanded_catch_denominator_by_stratum(reverse):
                 "unaged": unaged,
                 "aged_observed": observed,
                 "unaged_observed": observed_unaged,
+                "unaged_sample_count": xr.ones_like(observed_unaged),
             }
         ),
         catch,
@@ -55,14 +56,11 @@ def test_missing_unaged_ratio(no_remainder):
     aged = weight([[1.0, 2.0], [1.0, 2.0]])
     catch = pd.DataFrame({"stratum": [1, 2], "weight": [3.0, 3.0 if no_remainder else 10.0]})
     data = xr.Dataset(
-        {"aged": aged, "unaged": aged * 0, "aged_observed": aged, "unaged_observed": aged * 0}
+        {"aged": aged, "unaged": aged * 0, "aged_observed": aged, "unaged_observed": aged * 0, "unaged_sample_count": aged * 0}
     )
-    if no_remainder:
-        result = weight_proportions(data, catch, "stratum", net_selectivity=True)
-        np.testing.assert_allclose(result["proportion"].sum("sex"), [1.0, 1.0])
-    else:
-        with pytest.raises(ValueError, match="finite positive"):
-            weight_proportions(data, catch, "stratum", net_selectivity=True)
+    result = weight_proportions(data, catch, "stratum", net_selectivity=True)
+    np.testing.assert_allclose(result["proportion"].sum("sex"),
+                               [1., 1. if no_remainder else 3. / 10.])
 
 
 @pytest.mark.parametrize(
@@ -90,13 +88,13 @@ def test_selectivity_requires_observed_arrays():
 
 
 @pytest.mark.parametrize("net_selectivity", [False, True])
-@pytest.mark.parametrize("missing", ["aged", "unaged", "aged_observed", "unaged_observed"])
+@pytest.mark.parametrize("missing", ["aged", "unaged", "aged_observed", "unaged_observed", "unaged_sample_count"])
 def test_required_weight_keys(net_selectivity, missing):
     aged = weight([[1.0, 2.0], [1.0, 2.0]])
     data = xr.Dataset(
         {
             key: aged
-            for key in ["aged", "unaged", "aged_observed", "unaged_observed"]
+            for key in ["aged", "unaged", "aged_observed", "unaged_observed", "unaged_sample_count"]
             if key != missing
         }
     )
@@ -121,15 +119,57 @@ def test_small_catch_remainder_ratio_fallback(remaining, valid_ratio):
             "aged_observed": observed_aged,
             "unaged": unaged * 2,
             "unaged_observed": unaged,
+            "unaged_sample_count": (unaged > 0).astype(float),
         }
     )
     catch = pd.DataFrame({"stratum": [1, 2], "weight": [3.0 + remaining] * 2})
-    if not valid_ratio and remaining >= 1.0:
-        with pytest.raises(ValueError, match="finite positive"):
-            weight_proportions(data, catch, "stratum", net_selectivity=True)
-    else:
+    result = weight_proportions(data, catch, "stratum", net_selectivity=True)
+    ratio = 2.0 if valid_ratio else 1.0
+    np.testing.assert_allclose(
+        result["proportion"].sum("sex"), [6.0 / (6.0 + remaining * ratio)] * 2
+    )
+
+
+@pytest.mark.parametrize("sexed_samples", [False, True])
+def test_unsexed_fallback_and_aged_totals(sexed_samples):
+    coords = {"stratum": [1], "sex": ["male", "female", "unsexed"]}
+    def array(values):
+        return xr.DataArray([values], dims=["stratum", "sex"], coords=coords)
+    data = xr.Dataset({
+        "aged": array([4., 6., 0.]),
+        "aged_observed": array([2., 3., 0.]),
+        "unaged": array([4., 6., 30.] if sexed_samples else [0., 0., 30.]),
+        "unaged_observed": array([2., 3., 10.] if sexed_samples else [0., 0., 10.]),
+        "unaged_sample_count": array([1., 1., 2.] if sexed_samples else [0., 0., 2.]),
+    })
+    catch = pd.DataFrame({"stratum": [1], "weight": [29.]})
+    result = weight_proportions(data, catch, "stratum", net_selectivity=True)["proportion"]
+    denominator = 10. + (29. - 5.) * (2. if sexed_samples else 3.)
+    np.testing.assert_allclose(result, [[4. / denominator, 6. / denominator, 0.]])
+    assert set(result.sex.values) == {"male", "female", "unsexed"}
+    assert (result.sel(sex="male") / result.sel(sex="female")).item() == pytest.approx(2. / 3.)
+
+
+def test_sampled_unusable_weights_warn_and_use_one():
+    aged = weight([[1., 2.], [1., 2.]])
+    data = xr.Dataset({"aged": aged, "aged_observed": aged,
+                       "unaged": aged * 0, "unaged_observed": aged * 0,
+                       "unaged_sample_count": aged})
+    catch = pd.DataFrame({"stratum": [1, 2], "weight": [10., 10.]})
+    with pytest.warns(UserWarning, match="unusable weights.*ratio 1"):
         result = weight_proportions(data, catch, "stratum", net_selectivity=True)
-        ratio = 2.0 if valid_ratio else 1.0
-        np.testing.assert_allclose(
-            result["proportion"].sum("sex"), [6.0 / (6.0 + remaining * ratio)] * 2
-        )
+    np.testing.assert_allclose(result["proportion"].sum("sex"), [0.3, 0.3])
+
+
+@pytest.mark.parametrize("net_selectivity", [False, True])
+def test_zero_padded_unsexed_aged_weights_preserve_proportions(net_selectivity):
+    aged = weight([[1., 2.], [1., 2.]])
+    data = xr.Dataset({"aged": aged, "aged_observed": aged,
+                       "unaged": aged * 2, "unaged_observed": aged,
+                       "unaged_sample_count": aged})
+    catch = pd.DataFrame({"stratum": [1, 2], "weight": [20., 20.]})
+    expected = weight_proportions(data, catch, "stratum", net_selectivity=net_selectivity)
+    extra = data.reindex(sex=["female", "male", "unsexed"], fill_value=0.)
+    result = weight_proportions(extra, catch, "stratum", net_selectivity=net_selectivity)
+    xr.testing.assert_identical(result.sel(sex=["female", "male"]), expected)
+    assert (result["proportion"].sel(sex="unsexed") == 0).all()
