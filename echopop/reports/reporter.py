@@ -1415,8 +1415,8 @@ class Reporter:
         # Subset the columns that are required for the report
         output_df = kriged_data.filter(
             [
-                "longitude",
                 "latitude",
+                "longitude",
                 "stratum",
                 "nasc",
                 "abundance_male",
