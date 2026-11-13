@@ -989,8 +989,35 @@ def weight_proportions(
             fill_value=0.0,
         )
         remaining = total_weights - observed_aged
-        if bool((remaining < 0).any()):
-            raise ValueError("Observed aged weight exceeds catch weight.")
+
+        def deficit_details(mask):
+            details = xr.Dataset(
+                {
+                    "total_weight": total_weights,
+                    "observed_aged": observed_aged,
+                    "remaining": remaining,
+                }
+            )
+            if not details.dims:
+                return str({name: value.item() for name, value in details.data_vars.items()})
+            return details.where(mask).to_dataframe().dropna(how="all").to_string()
+
+        large_deficit = remaining < -1.0
+        if bool((large_deficit).any()):
+            raise ValueError(
+                "Observed aged weight exceeds catch weight by more than 1kg in the "
+                "following strata:\n" + deficit_details(large_deficit)
+            )
+
+        small_deficit = (remaining < 0.0) & (remaining >= -1.0)
+        if bool(small_deficit.any()):
+            warnings.warn(
+                "Observed aged weight exceeds catch weight by at most 1kg; setting "
+                "remaining to 0 in the following strata:\n" + deficit_details(small_deficit),
+                UserWarning,
+                stacklevel=2,
+            )
+            remaining = remaining.where(~small_deficit, 0.0)
 
         def selected_total(data, sexes):
             selected = data.sel(sex=[sex for sex in sexes if sex in data.sex.values])
