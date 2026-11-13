@@ -989,6 +989,7 @@ def weight_proportions(
             fill_value=0.0,
         )
         remaining = total_weights - observed_aged
+
         def deficit_details(mask):
             details = xr.Dataset(
                 {
